@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { pipeline } from 'stream/promises';
 
-import core from '@actions/core';
+import * as core from '@actions/core';
 import exec from '@actions/exec';
 import io from '@actions/io';
 import * as tc from '@actions/tool-cache';

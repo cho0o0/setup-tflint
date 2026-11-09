@@ -21,7 +21,7 @@ const tc = {
 const getReleaseByTag = jest.fn();
 const Octokit = jest.fn(() => ({ repos: { getReleaseByTag } }));
 
-jest.unstable_mockModule('@actions/core', () => ({ default: core }));
+jest.unstable_mockModule('@actions/core', () => core);
 jest.unstable_mockModule('@actions/tool-cache', () => tc);
 jest.unstable_mockModule('@octokit/rest', () => ({ Octokit }));
 jest.unstable_mockModule('./cache-restore.js', () => ({ default: jest.fn() }));
