@@ -26,7 +26,7 @@ jest.unstable_mockModule('@actions/tool-cache', () => tc);
 jest.unstable_mockModule('@octokit/rest', () => ({ Octokit }));
 jest.unstable_mockModule('./cache-restore.js', () => ({ default: jest.fn() }));
 
-const { downloadCLI, getDownloadRequest } = await import('./setup-tflint.js');
+const { downloadCLI, getDownloadRequest, isTrustedAssetUrl } = await import('./setup-tflint.js');
 
 const ANONYMOUS_URL =
   'https://github.com/terraform-linters/tflint/releases/download/v0.61.0/tflint_linux_amd64.zip';
@@ -90,6 +90,60 @@ describe('getDownloadRequest', () => {
 
     expect(request).toEqual({ url: ANONYMOUS_URL });
     expect(core.warning).toHaveBeenCalledWith(expect.stringContaining('not found'));
+  });
+
+  it('does not send the token when the asset URL is not the tflint asset API', async () => {
+    inputs.github_token = 'ghs_test';
+    getReleaseByTag.mockResolvedValue({
+      data: {
+        assets: [{ name: 'tflint_linux_amd64.zip', url: 'https://evil.example/assets/123' }],
+      },
+    });
+
+    const request = await getDownloadRequest('v0.61.0', 'tflint_linux_amd64.zip');
+
+    expect(request).toEqual({ url: ANONYMOUS_URL });
+    expect(core.warning).toHaveBeenCalledWith(expect.stringContaining('Unexpected asset URL'));
+  });
+});
+
+describe('isTrustedAssetUrl', () => {
+  it('accepts the tflint release asset API URL', () => {
+    expect(isTrustedAssetUrl(ASSET_API_URL)).toBe(true);
+  });
+
+  it.each([
+    ['another host', 'https://evil.example/repos/terraform-linters/tflint/releases/assets/123'],
+    [
+      'a look-alike host',
+      'https://api.github.com.evil.example/repos/terraform-linters/tflint/releases/assets/123',
+    ],
+    [
+      'credentials in the URL',
+      'https://user@api.github.com/repos/terraform-linters/tflint/releases/assets/123',
+    ],
+    ['plain HTTP', 'http://api.github.com/repos/terraform-linters/tflint/releases/assets/123'],
+    [
+      'a non-default port',
+      'https://api.github.com:8443/repos/terraform-linters/tflint/releases/assets/123',
+    ],
+    ['another repository', 'https://api.github.com/repos/evil/tflint/releases/assets/123'],
+    [
+      'another API path',
+      'https://api.github.com/repos/terraform-linters/tflint/releases/assets/123/../../../../user',
+    ],
+    [
+      'a query string',
+      'https://api.github.com/repos/terraform-linters/tflint/releases/assets/123?x=1',
+    ],
+    [
+      'a non-numeric asset id',
+      'https://api.github.com/repos/terraform-linters/tflint/releases/assets/abc',
+    ],
+    ['an invalid URL', 'not a url'],
+    ['a missing URL', undefined],
+  ])('rejects %s', (_label, url) => {
+    expect(isTrustedAssetUrl(url)).toBe(false);
   });
 });
 

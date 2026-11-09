@@ -89026,6 +89026,30 @@ async function fileSHA256(filePath) {
 }
 
 /**
+ * Check that a URL is the GitHub API endpoint of a tflint release asset.
+ * @param {string} url - Asset URL returned by the GitHub API
+ * @returns {boolean}
+ */
+function isTrustedAssetUrl(url) {
+  let parsed;
+
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  return (
+    parsed.origin === 'https://api.github.com' &&
+    !parsed.username &&
+    !parsed.password &&
+    !parsed.search &&
+    !parsed.hash &&
+    /^\/repos\/terraform-linters\/tflint\/releases\/assets\/\d+$/.test(parsed.pathname)
+  );
+}
+
+/**
  * Resolve how to download the release asset.
  *
  * With a token, the asset is fetched through the REST API so the request is authenticated.
@@ -89056,6 +89080,11 @@ async function getDownloadRequest(version, assetName) {
     const asset = release.assets.find((a) => a.name === assetName);
     if (!asset) {
       throw new Error(`Asset ${assetName} not found in release ${version}`);
+    }
+
+    // Never send the token anywhere other than the API endpoint for tflint's release assets.
+    if (!isTrustedAssetUrl(asset.url)) {
+      throw new Error(`Unexpected asset URL ${asset.url}`);
     }
 
     // The API redirects to a different host; @actions/http-client drops the Authorization header there.
