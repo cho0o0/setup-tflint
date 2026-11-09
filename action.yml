@@ -6,7 +6,7 @@ inputs:
     required: false
     default: latest
   github_token:
-    description: GitHub token - used when getting the latest version of tflint
+    description: GitHub token - used when getting the latest version of tflint and when downloading the tflint binary
     required: false
     default: ${{ github.server_url == 'https://github.com' && github.token || '' }}
   tflint_wrapper:

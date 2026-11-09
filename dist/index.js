@@ -89025,10 +89025,58 @@ async function fileSHA256(filePath) {
   return hash.digest('hex');
 }
 
-async function downloadCLI(url, checksums, version) {
+/**
+ * Resolve how to download the release asset.
+ *
+ * With a token, the asset is fetched through the REST API so the request is authenticated.
+ * GitHub can throttle anonymous release downloads (e.g. 504/429 for unauthenticated traffic),
+ * and the plain github.com download URL does not use the token at all.
+ * Without a token, or when the API lookup fails, fall back to the anonymous download URL.
+ * @param {string} version - Release tag (e.g. "v0.50.0")
+ * @param {string} assetName - Asset file name (e.g. "tflint_linux_amd64.zip")
+ * @returns {Promise<{url: string, auth?: string, headers?: object}>}
+ */
+async function getDownloadRequest(version, assetName) {
+  const anonymous = {
+    url: `https://github.com/terraform-linters/tflint/releases/download/${version}/${assetName}`,
+  };
+
+  const token = core.getInput('github_token');
+  if (!token) {
+    return anonymous;
+  }
+
+  try {
+    const octokit = getOctokit();
+    const { data: release } = await octokit.repos.getReleaseByTag({
+      owner: 'terraform-linters',
+      repo: 'tflint',
+      tag: version,
+    });
+    const asset = release.assets.find((a) => a.name === assetName);
+    if (!asset) {
+      throw new Error(`Asset ${assetName} not found in release ${version}`);
+    }
+
+    // The API redirects to a different host; @actions/http-client drops the Authorization header there.
+    return {
+      url: asset.url,
+      auth: `token ${token}`,
+      headers: { accept: 'application/octet-stream' },
+    };
+  } catch (error) {
+    core.warning(
+      `Failed to resolve the release asset via the GitHub API (${error.message}). Falling back to an anonymous download.`,
+    );
+    return anonymous;
+  }
+}
+
+async function downloadCLI(request, checksums, version) {
+  const { url, auth, headers } = request;
   core.info(`Attempting to download ${version}...`);
-  core.info(`Acquiring ${version} from ${url}`);
-  const pathToCLIZip = await tool_cache.downloadTool(url);
+  core.info(`Acquiring ${version} from ${url}${auth ? ' (authenticated)' : ''}`);
+  const pathToCLIZip = await tool_cache.downloadTool(url, undefined, auth, headers);
 
   if (checksums.length > 0) {
     core.debug('Verifying checksum of downloaded file');
@@ -89116,9 +89164,9 @@ async function run() {
       core.info(`Found TFLint ${version} in cache @ ${pathToCLI}`);
     } else {
       core.debug(`Getting download URL for tflint version ${version}: ${platform} ${arch}`);
-      const url = `https://github.com/terraform-linters/tflint/releases/download/${version}/tflint_${platform}_${arch}.zip`;
+      const request = await getDownloadRequest(version, `tflint_${platform}_${arch}.zip`);
 
-      pathToCLI = await downloadCLI(url, checksums, version);
+      pathToCLI = await downloadCLI(request, checksums, version);
 
       core.info('Adding to the tool cache...');
       pathToCLI = await tool_cache.cacheDir(pathToCLI, 'tflint', normalizedVersion, arch);
@@ -89145,6 +89193,9 @@ async function run() {
 }
 
 /* harmony default export */ const setup_tflint = (run);
+
+// Exported for testing
+
 
 ;// CONCATENATED MODULE: ./index.js
 

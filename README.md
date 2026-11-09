@@ -2,6 +2,9 @@
 
 A GitHub action that installs a Terraform linter [TFLint](https://github.com/terraform-linters/tflint) executable in the PATH.
 
+> [!NOTE]
+> This is a fork of [terraform-linters/setup-tflint](https://github.com/terraform-linters/setup-tflint) v6.2.1. When `github_token` is set, the TFLint binary is downloaded through the GitHub REST API with that token, so the download is authenticated. Upstream always downloads the binary anonymously, which can fail when GitHub throttles unauthenticated traffic.
+
 ## Inputs
 
 All inputs are optional, but may include a default where specified.
@@ -25,7 +28,9 @@ This ensures that the downloaded binary for a given version is a known build. If
 
 ### `github_token`
 
-Used to authenticate requests to the GitHub API to obtain release data from the TFLint repository. Authenticating will increase the [API rate limit](https://developer.github.com/v3/#rate-limiting). Any valid token is supported. No permissions are required.
+Used to authenticate requests to the GitHub API to obtain release data from the TFLint repository, and to download the TFLint binary. Authenticating will increase the [API rate limit](https://developer.github.com/v3/#rate-limiting). Any valid token is supported. No permissions are required.
+
+If the release asset cannot be resolved through the API (for example, the token is invalid), the action falls back to an anonymous download from `github.com/terraform-linters/tflint/releases/download/...`.
 
 Default: `${{ github.server_url == 'https://github.com' && github.token || '' }}`
 
