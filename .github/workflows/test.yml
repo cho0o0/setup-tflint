@@ -24,7 +24,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
     - name: Install
-      run: npm ci
+      run: npm ci --ignore-scripts
     - name: Build & Verify
       run: npm run build && git diff --exit-code
 
@@ -40,7 +40,7 @@ jobs:
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
-    - run: npm ci
+    - run: npm ci --ignore-scripts
     - run: npm run lint
 
   unit:
@@ -57,7 +57,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-
     - name: Install
-      run: npm ci
+      run: npm ci --ignore-scripts
     - name: Test
       run: npm test
       env:
@@ -98,6 +98,8 @@ jobs:
       with:
         tflint_version: ${{ matrix.tflint_version }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        # Releases before v0.51.1 have no artifact attestation
+        verify_attestation: ${{ matrix.tflint_version == 'latest' }}
     - name: Validate
       if: matrix.tflint_version != 'latest'
       run: |-
@@ -137,6 +139,44 @@ jobs:
           checksums: bb0a3a6043ea1bcd221fc95d49bac831bb511eb31946ca6a4050983e9e584578
       - run: tflint -v
 
+  integration-attestation:
+    name: 'Integration test: attestation'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Use Action
+        uses: ./
+        with:
+          tflint_version: 'v0.61.0'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - run: tflint -v | grep 0.61.0
+
+  integration-attestation-required:
+    name: 'Integration test: attestation is required'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - name: Use Action
+        id: setup-tflint
+        continue-on-error: true
+        uses: ./
+        with:
+          # Released before TFLint started attesting checksums.txt (v0.51.1)
+          tflint_version: 'v0.50.3'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify that installation failed
+        run: |
+          if [[ "${{ steps.setup-tflint.outcome }}" != "failure" ]]; then
+            echo "Expected the action to fail without an attestation, got '${{ steps.setup-tflint.outcome }}'"
+            exit 1
+          fi
+          if command -v tflint >/dev/null; then
+            echo "tflint must not be installed when verification fails"
+            exit 1
+          fi
+
   integration-matchers:
     name: 'Integration test: matchers (tflint_version: ${{ matrix.tflint_version }})'
     runs-on: ubuntu-latest
@@ -151,6 +191,8 @@ jobs:
       with:
         tflint_version: ${{ matrix.tflint_version }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        # Releases before v0.51.1 have no artifact attestation
+        verify_attestation: ${{ matrix.tflint_version == 'latest' }}
     - name: Run
       run: tflint -f compact --force
 
@@ -170,6 +212,8 @@ jobs:
           tflint_version: ${{ matrix.tflint_version }}
           tflint_wrapper: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Releases before v0.51.1 have no artifact attestation
+          verify_attestation: ${{ matrix.tflint_version == 'latest' }}
       - name: Run
         id: tflint
         run: tflint -f compact --force

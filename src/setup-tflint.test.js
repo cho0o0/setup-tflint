@@ -1,3 +1,7 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
 import { jest } from '@jest/globals';
 
 const inputs = {};
@@ -25,6 +29,9 @@ jest.unstable_mockModule('@actions/core', () => core);
 jest.unstable_mockModule('@actions/tool-cache', () => tc);
 jest.unstable_mockModule('@octokit/rest', () => ({ Octokit }));
 jest.unstable_mockModule('./cache-restore.js', () => ({ default: jest.fn() }));
+const verifyChecksumsAttestation = jest.fn();
+const findChecksum = jest.fn();
+jest.unstable_mockModule('./attestation.js', () => ({ findChecksum, verifyChecksumsAttestation }));
 
 const { downloadCLI, getDownloadRequest, isTrustedAssetUrl } = await import('./setup-tflint.js');
 
@@ -174,5 +181,88 @@ describe('downloadCLI', () => {
     await downloadCLI({ url: ANONYMOUS_URL }, [], 'v0.61.0');
 
     expect(tc.downloadTool).toHaveBeenCalledWith(ANONYMOUS_URL, undefined, undefined, undefined);
+  });
+});
+
+describe('downloadCLI with attestation verification', () => {
+  const ZIP_CONTENT = 'fake tflint zip';
+  const OTHER_SHA256 = '0f6b01a7d1d4b8c1d5f2ac69d7c0a0e7d1d9bb5c4d1a0cbaf6fd1e57a6c0a8d4';
+  let tmpDir;
+  let zipPath;
+  let checksumsPath;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'setup-tflint-test-'));
+    zipPath = path.join(tmpDir, 'tflint.zip');
+    checksumsPath = path.join(tmpDir, 'checksums.txt');
+    fs.writeFileSync(zipPath, ZIP_CONTENT); // eslint-disable-line security/detect-non-literal-fs-filename
+    fs.writeFileSync(checksumsPath, 'checksums'); // eslint-disable-line security/detect-non-literal-fs-filename
+    tc.downloadTool.mockReset();
+    tc.downloadTool.mockResolvedValueOnce(zipPath).mockResolvedValueOnce(checksumsPath);
+    findChecksum.mockReset();
+    verifyChecksumsAttestation.mockReset();
+    tc.extractZip.mockResolvedValue('/tmp/tflint');
+  });
+
+  afterEach(() => {
+    tc.downloadTool.mockReset();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const download = () =>
+    downloadCLI({ url: ANONYMOUS_URL }, [], 'v0.61.0', {
+      assetName: 'tflint_linux_amd64.zip',
+      verifyAttestation: true,
+    });
+
+  it('installs when checksums.txt is attested and lists the downloaded file', async () => {
+    const actual = (await import('crypto')).createHash('sha256').update(ZIP_CONTENT).digest('hex');
+    findChecksum.mockReturnValue(actual);
+
+    await download();
+
+    expect(tc.downloadTool).toHaveBeenLastCalledWith(
+      'https://github.com/terraform-linters/tflint/releases/download/v0.61.0/checksums.txt',
+      undefined,
+      undefined,
+      undefined,
+    );
+    expect(verifyChecksumsAttestation).toHaveBeenCalledWith(
+      expect.objectContaining({ version: 'v0.61.0', checksums: Buffer.from('checksums') }),
+    );
+    expect(findChecksum).toHaveBeenCalledWith('checksums', 'tflint_linux_amd64.zip');
+    expect(tc.extractZip).toHaveBeenCalledWith(zipPath);
+  });
+
+  it('does not install when the attestation does not verify', async () => {
+    verifyChecksumsAttestation.mockRejectedValueOnce(new Error('untrusted signer'));
+
+    await expect(download()).rejects.toThrow('untrusted signer');
+    expect(tc.extractZip).not.toHaveBeenCalled();
+  });
+
+  it('does not install when the download does not match checksums.txt', async () => {
+    findChecksum.mockReturnValue(OTHER_SHA256);
+
+    await expect(download()).rejects.toThrow('Checksum mismatch for tflint_linux_amd64.zip');
+    expect(tc.extractZip).not.toHaveBeenCalled();
+  });
+
+  it('does not install when checksums.txt does not list the asset', async () => {
+    findChecksum.mockReturnValue(undefined);
+
+    await expect(download()).rejects.toThrow('is not listed in checksums.txt');
+    expect(tc.extractZip).not.toHaveBeenCalled();
+  });
+
+  it('skips verification only when it is turned off', async () => {
+    await downloadCLI({ url: ANONYMOUS_URL }, [], 'v0.61.0', {
+      assetName: 'tflint_linux_amd64.zip',
+      verifyAttestation: false,
+    });
+
+    expect(verifyChecksumsAttestation).not.toHaveBeenCalled();
+    expect(core.warning).toHaveBeenCalledWith(expect.stringContaining('Skipping'));
+    expect(tc.extractZip).toHaveBeenCalledWith(zipPath);
   });
 });

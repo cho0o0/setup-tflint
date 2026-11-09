@@ -1685,7 +1685,7 @@ const Comparator = __nccwpck_require__(9497)
 const Range = __nccwpck_require__(6816)
 const satisfies = __nccwpck_require__(505)
 const toComparators = __nccwpck_require__(2675)
-const maxSatisfying = __nccwpck_require__(6027)
+const maxSatisfying = __nccwpck_require__(1265)
 const minSatisfying = __nccwpck_require__(1745)
 const minVersion = __nccwpck_require__(4156)
 const validRange = __nccwpck_require__(3319)
@@ -2665,7 +2665,7 @@ module.exports = ltr
 
 /***/ }),
 
-/***/ 6027:
+/***/ 1265:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
@@ -12603,6 +12603,8537 @@ exports.ReflectionTypeCheck = ReflectionTypeCheck;
 
 /***/ }),
 
+/***/ 8456:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.toMessageSignatureBundle = toMessageSignatureBundle;
+exports.toDSSEBundle = toDSSEBundle;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const protobuf_specs_1 = __nccwpck_require__(9654);
+const bundle_1 = __nccwpck_require__(7742);
+// Message signature bundle - $case: 'messageSignature'
+function toMessageSignatureBundle(options) {
+    return {
+        mediaType: options.certificateChain
+            ? bundle_1.BUNDLE_V02_MEDIA_TYPE
+            : bundle_1.BUNDLE_V03_MEDIA_TYPE,
+        content: {
+            $case: 'messageSignature',
+            messageSignature: {
+                messageDigest: {
+                    algorithm: protobuf_specs_1.HashAlgorithm.SHA2_256,
+                    digest: options.digest,
+                },
+                signature: options.signature,
+            },
+        },
+        verificationMaterial: toVerificationMaterial(options),
+    };
+}
+// DSSE envelope bundle - $case: 'dsseEnvelope'
+function toDSSEBundle(options) {
+    return {
+        mediaType: options.certificateChain
+            ? bundle_1.BUNDLE_V02_MEDIA_TYPE
+            : bundle_1.BUNDLE_V03_MEDIA_TYPE,
+        content: {
+            $case: 'dsseEnvelope',
+            dsseEnvelope: toEnvelope(options),
+        },
+        verificationMaterial: toVerificationMaterial(options),
+    };
+}
+function toEnvelope(options) {
+    return {
+        payloadType: options.artifactType,
+        payload: options.artifact,
+        signatures: [toSignature(options)],
+    };
+}
+function toSignature(options) {
+    return {
+        keyid: options.keyHint || '',
+        sig: options.signature,
+    };
+}
+// Verification material
+function toVerificationMaterial(options) {
+    return {
+        content: toKeyContent(options),
+        tlogEntries: [],
+        timestampVerificationData: { rfc3161Timestamps: [] },
+    };
+}
+function toKeyContent(options) {
+    if (options.certificate) {
+        if (options.certificateChain) {
+            return {
+                $case: 'x509CertificateChain',
+                x509CertificateChain: {
+                    certificates: [{ rawBytes: options.certificate }],
+                },
+            };
+        }
+        else {
+            return {
+                $case: 'certificate',
+                certificate: { rawBytes: options.certificate },
+            };
+        }
+    }
+    else {
+        return {
+            $case: 'publicKey',
+            publicKey: {
+                hint: options.keyHint || '',
+            },
+        };
+    }
+}
+
+
+/***/ }),
+
+/***/ 7742:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BUNDLE_V03_MEDIA_TYPE = exports.BUNDLE_V03_LEGACY_MEDIA_TYPE = exports.BUNDLE_V02_MEDIA_TYPE = exports.BUNDLE_V01_MEDIA_TYPE = void 0;
+exports.isBundleWithCertificateChain = isBundleWithCertificateChain;
+exports.isBundleWithPublicKey = isBundleWithPublicKey;
+exports.isBundleWithMessageSignature = isBundleWithMessageSignature;
+exports.isBundleWithDsseEnvelope = isBundleWithDsseEnvelope;
+exports.BUNDLE_V01_MEDIA_TYPE = 'application/vnd.dev.sigstore.bundle+json;version=0.1';
+exports.BUNDLE_V02_MEDIA_TYPE = 'application/vnd.dev.sigstore.bundle+json;version=0.2';
+exports.BUNDLE_V03_LEGACY_MEDIA_TYPE = 'application/vnd.dev.sigstore.bundle+json;version=0.3';
+exports.BUNDLE_V03_MEDIA_TYPE = 'application/vnd.dev.sigstore.bundle.v0.3+json';
+// Type guards for bundle variants.
+function isBundleWithCertificateChain(b) {
+    return b.verificationMaterial.content.$case === 'x509CertificateChain';
+}
+function isBundleWithPublicKey(b) {
+    return b.verificationMaterial.content.$case === 'publicKey';
+}
+function isBundleWithMessageSignature(b) {
+    return b.content.$case === 'messageSignature';
+}
+function isBundleWithDsseEnvelope(b) {
+    return b.content.$case === 'dsseEnvelope';
+}
+
+
+/***/ }),
+
+/***/ 7714:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ValidationError = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+class ValidationError extends Error {
+    fields;
+    constructor(message, fields) {
+        super(message);
+        this.fields = fields;
+    }
+}
+exports.ValidationError = ValidationError;
+
+
+/***/ }),
+
+/***/ 1040:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+var __webpack_unused_export__;
+
+__webpack_unused_export__ = ({ value: true });
+__webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = exports.vw = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = __webpack_unused_export__ = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+var build_1 = __nccwpck_require__(8456);
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return build_1.toDSSEBundle; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return build_1.toMessageSignatureBundle; } });
+var bundle_1 = __nccwpck_require__(7742);
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return bundle_1.BUNDLE_V01_MEDIA_TYPE; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return bundle_1.BUNDLE_V02_MEDIA_TYPE; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return bundle_1.BUNDLE_V03_LEGACY_MEDIA_TYPE; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return bundle_1.BUNDLE_V03_MEDIA_TYPE; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return bundle_1.isBundleWithCertificateChain; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return bundle_1.isBundleWithDsseEnvelope; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return bundle_1.isBundleWithMessageSignature; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return bundle_1.isBundleWithPublicKey; } });
+var error_1 = __nccwpck_require__(7714);
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return error_1.ValidationError; } });
+var serialized_1 = __nccwpck_require__(3404);
+Object.defineProperty(exports, "vw", ({ enumerable: true, get: function () { return serialized_1.bundleFromJSON; } }));
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return serialized_1.bundleToJSON; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return serialized_1.envelopeFromJSON; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return serialized_1.envelopeToJSON; } });
+var validate_1 = __nccwpck_require__(9352);
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return validate_1.assertBundle; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return validate_1.assertBundleLatest; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return validate_1.assertBundleV01; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return validate_1.assertBundleV02; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return validate_1.isBundleV01; } });
+
+
+/***/ }),
+
+/***/ 3404:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.envelopeToJSON = exports.envelopeFromJSON = exports.bundleToJSON = exports.bundleFromJSON = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const protobuf_specs_1 = __nccwpck_require__(9654);
+const bundle_1 = __nccwpck_require__(7742);
+const validate_1 = __nccwpck_require__(9352);
+const bundleFromJSON = (obj) => {
+    const bundle = protobuf_specs_1.Bundle.fromJSON(obj);
+    switch (bundle.mediaType) {
+        case bundle_1.BUNDLE_V01_MEDIA_TYPE:
+            (0, validate_1.assertBundleV01)(bundle);
+            break;
+        case bundle_1.BUNDLE_V02_MEDIA_TYPE:
+            (0, validate_1.assertBundleV02)(bundle);
+            break;
+        default:
+            (0, validate_1.assertBundleLatest)(bundle);
+            break;
+    }
+    return bundle;
+};
+exports.bundleFromJSON = bundleFromJSON;
+const bundleToJSON = (bundle) => {
+    return protobuf_specs_1.Bundle.toJSON(bundle);
+};
+exports.bundleToJSON = bundleToJSON;
+const envelopeFromJSON = (obj) => {
+    return protobuf_specs_1.Envelope.fromJSON(obj);
+};
+exports.envelopeFromJSON = envelopeFromJSON;
+const envelopeToJSON = (envelope) => {
+    return protobuf_specs_1.Envelope.toJSON(envelope);
+};
+exports.envelopeToJSON = envelopeToJSON;
+
+
+/***/ }),
+
+/***/ 9352:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.assertBundle = assertBundle;
+exports.assertBundleV01 = assertBundleV01;
+exports.isBundleV01 = isBundleV01;
+exports.assertBundleV02 = assertBundleV02;
+exports.assertBundleLatest = assertBundleLatest;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const error_1 = __nccwpck_require__(7714);
+// Performs basic validation of a Sigstore bundle to ensure that all required
+// fields are populated. This is not a complete validation of the bundle, but
+// rather a check that the bundle is in a valid state to be processed by the
+// rest of the code.
+function assertBundle(b) {
+    const invalidValues = validateBundleBase(b);
+    if (invalidValues.length > 0) {
+        throw new error_1.ValidationError('invalid bundle', invalidValues);
+    }
+}
+// Asserts that the given bundle conforms to the v0.1 bundle format.
+function assertBundleV01(b) {
+    const invalidValues = [];
+    invalidValues.push(...validateBundleBase(b));
+    invalidValues.push(...validateInclusionPromise(b));
+    if (invalidValues.length > 0) {
+        throw new error_1.ValidationError('invalid v0.1 bundle', invalidValues);
+    }
+}
+// Type guard to determine if Bundle is a v0.1 bundle.
+function isBundleV01(b) {
+    try {
+        assertBundleV01(b);
+        return true;
+    }
+    catch (e) {
+        return false;
+    }
+}
+// Asserts that the given bundle conforms to the v0.2 bundle format.
+function assertBundleV02(b) {
+    const invalidValues = [];
+    invalidValues.push(...validateBundleBase(b));
+    invalidValues.push(...validateInclusionProof(b));
+    if (invalidValues.length > 0) {
+        throw new error_1.ValidationError('invalid v0.2 bundle', invalidValues);
+    }
+}
+// Asserts that the given bundle conforms to the newest (0.3) bundle format.
+function assertBundleLatest(b) {
+    const invalidValues = [];
+    invalidValues.push(...validateBundleBase(b));
+    invalidValues.push(...validateInclusionProof(b));
+    invalidValues.push(...validateNoCertificateChain(b));
+    if (invalidValues.length > 0) {
+        throw new error_1.ValidationError('invalid bundle', invalidValues);
+    }
+}
+function validateBundleBase(b) {
+    const invalidValues = [];
+    // Media type validation
+    if (b.mediaType === undefined ||
+        (!b.mediaType.match(/^application\/vnd\.dev\.sigstore\.bundle\+json;version=\d\.\d/) &&
+            !b.mediaType.match(/^application\/vnd\.dev\.sigstore\.bundle\.v\d\.\d\+json/))) {
+        invalidValues.push('mediaType');
+    }
+    // Content-related validation
+    if (b.content === undefined) {
+        invalidValues.push('content');
+    }
+    else {
+        switch (b.content.$case) {
+            case 'messageSignature':
+                if (b.content.messageSignature.messageDigest === undefined) {
+                    invalidValues.push('content.messageSignature.messageDigest');
+                }
+                else {
+                    if (b.content.messageSignature.messageDigest.digest.length === 0) {
+                        invalidValues.push('content.messageSignature.messageDigest.digest');
+                    }
+                }
+                if (b.content.messageSignature.signature.length === 0) {
+                    invalidValues.push('content.messageSignature.signature');
+                }
+                break;
+            case 'dsseEnvelope':
+                if (b.content.dsseEnvelope.payload.length === 0) {
+                    invalidValues.push('content.dsseEnvelope.payload');
+                }
+                if (b.content.dsseEnvelope.signatures.length !== 1) {
+                    invalidValues.push('content.dsseEnvelope.signatures');
+                }
+                else {
+                    if (b.content.dsseEnvelope.signatures[0].sig.length === 0) {
+                        invalidValues.push('content.dsseEnvelope.signatures[0].sig');
+                    }
+                }
+                break;
+        }
+    }
+    // Verification material-related validation
+    if (b.verificationMaterial === undefined) {
+        invalidValues.push('verificationMaterial');
+    }
+    else {
+        if (b.verificationMaterial.content === undefined) {
+            invalidValues.push('verificationMaterial.content');
+        }
+        else {
+            switch (b.verificationMaterial.content.$case) {
+                case 'x509CertificateChain':
+                    if (b.verificationMaterial.content.x509CertificateChain.certificates
+                        .length === 0) {
+                        invalidValues.push('verificationMaterial.content.x509CertificateChain.certificates');
+                    }
+                    b.verificationMaterial.content.x509CertificateChain.certificates.forEach((cert, i) => {
+                        if (cert.rawBytes.length === 0) {
+                            invalidValues.push(`verificationMaterial.content.x509CertificateChain.certificates[${i}].rawBytes`);
+                        }
+                    });
+                    break;
+                case 'certificate':
+                    if (b.verificationMaterial.content.certificate.rawBytes.length === 0) {
+                        invalidValues.push('verificationMaterial.content.certificate.rawBytes');
+                    }
+                    break;
+            }
+        }
+        if (b.verificationMaterial.tlogEntries === undefined) {
+            invalidValues.push('verificationMaterial.tlogEntries');
+        }
+        else {
+            if (b.verificationMaterial.tlogEntries.length > 0) {
+                b.verificationMaterial.tlogEntries.forEach((entry, i) => {
+                    if (entry.logId === undefined) {
+                        invalidValues.push(`verificationMaterial.tlogEntries[${i}].logId`);
+                    }
+                    if (entry.kindVersion === undefined) {
+                        invalidValues.push(`verificationMaterial.tlogEntries[${i}].kindVersion`);
+                    }
+                });
+            }
+        }
+    }
+    return invalidValues;
+}
+// Necessary for V01 bundles
+function validateInclusionPromise(b) {
+    const invalidValues = [];
+    if (b.verificationMaterial &&
+        b.verificationMaterial.tlogEntries?.length > 0) {
+        b.verificationMaterial.tlogEntries.forEach((entry, i) => {
+            if (entry.inclusionPromise === undefined) {
+                invalidValues.push(`verificationMaterial.tlogEntries[${i}].inclusionPromise`);
+            }
+        });
+    }
+    return invalidValues;
+}
+// Necessary for V02 and later bundles
+function validateInclusionProof(b) {
+    const invalidValues = [];
+    if (b.verificationMaterial &&
+        b.verificationMaterial.tlogEntries?.length > 0) {
+        b.verificationMaterial.tlogEntries.forEach((entry, i) => {
+            if (entry.inclusionProof === undefined) {
+                invalidValues.push(`verificationMaterial.tlogEntries[${i}].inclusionProof`);
+            }
+            else {
+                if (entry.inclusionProof.checkpoint === undefined) {
+                    invalidValues.push(`verificationMaterial.tlogEntries[${i}].inclusionProof.checkpoint`);
+                }
+            }
+        });
+    }
+    return invalidValues;
+}
+// Necessary for V03 and later bundles
+function validateNoCertificateChain(b) {
+    const invalidValues = [];
+    /* istanbul ignore next */
+    if (b.verificationMaterial?.content?.$case === 'x509CertificateChain') {
+        invalidValues.push('verificationMaterial.content.$case');
+    }
+    return invalidValues;
+}
+
+
+/***/ }),
+
+/***/ 1121:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ASN1TypeError = exports.ASN1ParseError = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+class ASN1ParseError extends Error {
+}
+exports.ASN1ParseError = ASN1ParseError;
+class ASN1TypeError extends Error {
+}
+exports.ASN1TypeError = ASN1TypeError;
+
+
+/***/ }),
+
+/***/ 6027:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ASN1Obj = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+var obj_1 = __nccwpck_require__(990);
+Object.defineProperty(exports, "ASN1Obj", ({ enumerable: true, get: function () { return obj_1.ASN1Obj; } }));
+
+
+/***/ }),
+
+/***/ 4243:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.decodeLength = decodeLength;
+exports.encodeLength = encodeLength;
+const error_1 = __nccwpck_require__(1121);
+// Decodes the length of a DER-encoded ANS.1 element from the supplied stream.
+// https://learn.microsoft.com/en-us/windows/win32/seccertenroll/about-encoded-length-and-value-bytes
+function decodeLength(stream) {
+    const buf = stream.getUint8();
+    // If the most significant bit is UNSET the length is just the value of the
+    // byte.
+    if ((buf & 0x80) === 0x00) {
+        return buf;
+    }
+    // Otherwise, the lower 7 bits of the first byte indicate the number of bytes
+    // that follow to encode the length.
+    const byteCount = buf & 0x7f;
+    // Ensure the encoded length can safely fit in a JS number.
+    if (byteCount > 6) {
+        throw new error_1.ASN1ParseError('length exceeds 6 byte limit');
+    }
+    // Iterate over the bytes that encode the length.
+    let len = 0;
+    for (let i = 0; i < byteCount; i++) {
+        const byte = stream.getUint8();
+        // The first byte of a multi-byte length must not be zero; a leading zero
+        // means the length could have been encoded in fewer bytes (non-minimal).
+        if (i === 0 && byte === 0x00) {
+            throw new error_1.ASN1ParseError('non-minimal length encoding');
+        }
+        len = len * 256 + byte;
+    }
+    // This is a valid ASN.1 length encoding, but we don't support it.
+    if (len === 0) {
+        throw new error_1.ASN1ParseError('indefinite length encoding not supported');
+    }
+    // Lengths less than 128 must use the short form; rejecting them here ensures
+    // the encoding is minimal (strict DER).
+    if (len < 128) {
+        throw new error_1.ASN1ParseError('non-minimal length encoding');
+    }
+    return len;
+}
+// Translates the supplied value to a DER-encoded length.
+function encodeLength(len) {
+    if (len < 128) {
+        return Buffer.from([len]);
+    }
+    // Bitwise operations on large numbers are not supported in JS, so we need to
+    // use BigInts.
+    let val = BigInt(len);
+    const bytes = [];
+    while (val > 0n) {
+        bytes.unshift(Number(val & 255n));
+        val = val >> 8n;
+    }
+    return Buffer.from([0x80 | bytes.length, ...bytes]);
+}
+
+
+/***/ }),
+
+/***/ 990:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ASN1Obj = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const stream_1 = __nccwpck_require__(1673);
+const error_1 = __nccwpck_require__(1121);
+const length_1 = __nccwpck_require__(4243);
+const parse_1 = __nccwpck_require__(1044);
+const tag_1 = __nccwpck_require__(9343);
+class ASN1Obj {
+    tag;
+    subs;
+    value;
+    constructor(tag, value, subs) {
+        this.tag = tag;
+        this.value = value;
+        this.subs = subs;
+    }
+    // Constructs an ASN.1 object from a Buffer of DER-encoded bytes.
+    static parseBuffer(buf) {
+        const stream = new stream_1.ByteStream(buf);
+        const obj = parseStream(stream);
+        // Ensure the entire buffer was consumed; trailing data after the top-level
+        // object indicates a malformed (or maliciously padded) encoding.
+        if (stream.position !== stream.length) {
+            throw new error_1.ASN1ParseError('invalid trailing data');
+        }
+        return obj;
+    }
+    toDER() {
+        const valueStream = new stream_1.ByteStream();
+        if (this.subs.length > 0) {
+            for (const sub of this.subs) {
+                valueStream.appendView(sub.toDER());
+            }
+        }
+        else {
+            valueStream.appendView(this.value);
+        }
+        const value = valueStream.buffer;
+        // Concat tag/length/value
+        const obj = new stream_1.ByteStream();
+        obj.appendChar(this.tag.toDER());
+        obj.appendView((0, length_1.encodeLength)(value.length));
+        obj.appendView(value);
+        return obj.buffer;
+    }
+    /////////////////////////////////////////////////////////////////////////////
+    // Convenience methods for parsing ASN.1 primitives into JS types
+    // Returns the ASN.1 object's value as a boolean. Throws an error if the
+    // object is not a boolean.
+    toBoolean() {
+        if (!this.tag.isBoolean()) {
+            throw new error_1.ASN1TypeError('not a boolean');
+        }
+        return (0, parse_1.parseBoolean)(this.value);
+    }
+    // Returns the ASN.1 object's value as a BigInt. Throws an error if the
+    // object is not an integer.
+    toInteger() {
+        if (!this.tag.isInteger()) {
+            throw new error_1.ASN1TypeError('not an integer');
+        }
+        return (0, parse_1.parseInteger)(this.value);
+    }
+    // Returns the ASN.1 object's value as an OID string. Throws an error if the
+    // object is not an OID.
+    toOID() {
+        if (!this.tag.isOID()) {
+            throw new error_1.ASN1TypeError('not an OID');
+        }
+        return (0, parse_1.parseOID)(this.value);
+    }
+    // Returns the ASN.1 object's value as a Date. Throws an error if the object
+    // is not either a UTCTime or a GeneralizedTime.
+    toDate() {
+        switch (true) {
+            case this.tag.isUTCTime():
+                return (0, parse_1.parseTime)(this.value, true);
+            case this.tag.isGeneralizedTime():
+                return (0, parse_1.parseTime)(this.value, false);
+            default:
+                throw new error_1.ASN1TypeError('not a date');
+        }
+    }
+    // Returns the ASN.1 object's value as a number[] where each number is the
+    // value of a bit in the bit string. Throws an error if the object is not a
+    // bit string.
+    toBitString() {
+        if (!this.tag.isBitString()) {
+            throw new error_1.ASN1TypeError('not a bit string');
+        }
+        return (0, parse_1.parseBitString)(this.value);
+    }
+}
+exports.ASN1Obj = ASN1Obj;
+/////////////////////////////////////////////////////////////////////////////
+// Internal stream parsing functions
+// Maximum nesting depth for parsed ASN.1 objects. Bounds the mutual recursion
+// between parseStream and collectSubs so that deeply nested DER cannot exhaust
+// the call stack (denial of service).
+const MAX_DEPTH = 100;
+function parseStream(stream, depth = 0) {
+    if (depth > MAX_DEPTH) {
+        throw new error_1.ASN1ParseError('maximum nesting depth exceeded');
+    }
+    // Parse tag, length, and value from stream
+    const tag = new tag_1.ASN1Tag(stream.getUint8());
+    const len = (0, length_1.decodeLength)(stream);
+    const value = stream.slice(stream.position, len);
+    const start = stream.position;
+    let subs = [];
+    // If the object is constructed, parse its children. Sometimes, children
+    // are embedded in OCTESTRING objects, so we need to check those
+    // for children as well.
+    if (tag.constructed) {
+        subs = collectSubs(stream, len, depth);
+    }
+    else if (tag.isOctetString()) {
+        // Attempt to parse children of OCTETSTRING objects. If anything fails,
+        // assume the object is not constructed and treat as primitive. This is
+        // intentional: it transparently unwraps DER content embedded in an OCTET
+        // STRING (e.g. X.509 extnValue, CMS eContent). The error is swallowed
+        // because a parse failure simply means the bytes are an opaque primitive
+        // value rather than a nested structure.
+        try {
+            subs = collectSubs(stream, len, depth);
+        }
+        catch (e) {
+            // Fail silently and treat as primitive
+        }
+    }
+    // If there are no children, move stream cursor to the end of the object
+    if (subs.length === 0) {
+        stream.seek(start + len);
+    }
+    return new ASN1Obj(tag, value, subs);
+}
+function collectSubs(stream, len, depth) {
+    // Calculate end of object content
+    const end = stream.position + len;
+    // Make sure there are enough bytes left in the stream. This should never
+    // happen, cause it'll get caught when the stream is sliced in parseStream.
+    // Leaving as an extra check just in case.
+    /* istanbul ignore if */
+    if (end > stream.length) {
+        throw new error_1.ASN1ParseError('invalid length');
+    }
+    // Parse all children
+    const subs = [];
+    while (stream.position < end) {
+        subs.push(parseStream(stream, depth + 1));
+    }
+    // When we're done parsing children, we should be at the end of the object
+    if (stream.position !== end) {
+        throw new error_1.ASN1ParseError('invalid length');
+    }
+    return subs;
+}
+
+
+/***/ }),
+
+/***/ 1044:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parseInteger = parseInteger;
+exports.parseStringASCII = parseStringASCII;
+exports.parseTime = parseTime;
+exports.parseOID = parseOID;
+exports.parseBoolean = parseBoolean;
+exports.parseBitString = parseBitString;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const error_1 = __nccwpck_require__(1121);
+const RE_TIME_SHORT_YEAR = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\.\d{3})?Z$/;
+const RE_TIME_LONG_YEAR = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\.\d{3})?Z$/;
+// Parse a BigInt from the DER-encoded buffer
+// https://learn.microsoft.com/en-us/windows/win32/seccertenroll/about-integer
+function parseInteger(buf) {
+    let pos = 0;
+    const end = buf.length;
+    let val = buf[pos];
+    const neg = val > 0x7f;
+    // Consume any padding bytes
+    const pad = neg ? 0xff : 0x00;
+    while (val == pad && ++pos < end) {
+        val = buf[pos];
+    }
+    // Calculate remaining bytes to read
+    const len = end - pos;
+    if (len === 0)
+        return BigInt(neg ? -1 : 0);
+    // Handle two's complement for negative numbers
+    val = neg ? val - 256 : val;
+    // Parse remaining bytes
+    let n = BigInt(val);
+    for (let i = pos + 1; i < end; ++i) {
+        n = n * BigInt(256) + BigInt(buf[i]);
+    }
+    return n;
+}
+// Parse an ASCII string from the DER-encoded buffer
+// https://learn.microsoft.com/en-us/windows/win32/seccertenroll/about-basic-types#boolean
+function parseStringASCII(buf) {
+    return buf.toString('ascii');
+}
+// Parse a Date from the DER-encoded buffer
+// https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.5.1
+function parseTime(buf, shortYear) {
+    const timeStr = parseStringASCII(buf);
+    // Parse the time string into matches - captured groups start at index 1
+    const m = shortYear
+        ? RE_TIME_SHORT_YEAR.exec(timeStr)
+        : RE_TIME_LONG_YEAR.exec(timeStr);
+    if (!m) {
+        throw new Error('invalid time');
+    }
+    // Translate dates with a 2-digit year to 4 digits per the spec
+    if (shortYear) {
+        let year = Number(m[1]);
+        year += year >= 50 ? 1900 : 2000;
+        m[1] = year.toString();
+    }
+    // Translate to ISO8601 format and parse
+    return new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`);
+}
+// Parse an OID from the DER-encoded buffer
+// https://learn.microsoft.com/en-us/windows/win32/seccertenroll/about-object-identifier
+function parseOID(buf) {
+    let pos = 0;
+    const end = buf.length;
+    // Consume first byte which encodes the first two OID components
+    let n = buf[pos++];
+    const first = Math.floor(n / 40);
+    const second = n % 40;
+    let oid = `${first}.${second}`;
+    // Consume remaining bytes. Use a BigInt accumulator so that arcs which
+    // exceed 32 bits are not silently truncated (a truncated arc could be made
+    // to collide with a trusted OID).
+    let val = 0n;
+    for (; pos < end; ++pos) {
+        n = buf[pos];
+        val = (val << 7n) + BigInt(n & 0x7f);
+        // If the left-most bit is NOT set, then this is the last byte in the
+        // sequence and we can add the value to the OID and reset the accumulator
+        if ((n & 0x80) === 0) {
+            oid += `.${val}`;
+            val = 0n;
+        }
+    }
+    return oid;
+}
+// Parse a boolean from the DER-encoded buffer
+// https://learn.microsoft.com/en-us/windows/win32/seccertenroll/about-basic-types#boolean
+function parseBoolean(buf) {
+    // DER requires a BOOLEAN to be a single byte that is either 0x00 (false) or
+    // 0xff (true). Reject any other (non-canonical) encoding.
+    if (buf.length !== 1) {
+        throw new error_1.ASN1ParseError('invalid boolean');
+    }
+    switch (buf[0]) {
+        case 0x00:
+            return false;
+        case 0xff:
+            return true;
+        default:
+            throw new error_1.ASN1ParseError('invalid boolean');
+    }
+}
+// Parse a bit string from the DER-encoded buffer
+// https://learn.microsoft.com/en-us/windows/win32/seccertenroll/about-bit-string
+function parseBitString(buf) {
+    // First byte tell us how many unused bits are in the last byte
+    const unused = buf[0];
+    // The number of unused bits must be in the range 0-7.
+    if (unused > 7) {
+        throw new error_1.ASN1ParseError('invalid bit string');
+    }
+    const start = 1;
+    const end = buf.length;
+    const bits = [];
+    for (let i = start; i < end; ++i) {
+        const byte = buf[i];
+        // The skip value is only used for the last byte
+        const skip = i === end - 1 ? unused : 0;
+        // Iterate over each bit in the byte (most significant first)
+        for (let j = 7; j >= skip; --j) {
+            // Read the bit and add it to the bit string
+            bits.push((byte >> j) & 0x01);
+        }
+    }
+    return bits;
+}
+
+
+/***/ }),
+
+/***/ 9343:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ASN1Tag = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const error_1 = __nccwpck_require__(1121);
+const UNIVERSAL_TAG = {
+    BOOLEAN: 0x01,
+    INTEGER: 0x02,
+    BIT_STRING: 0x03,
+    OCTET_STRING: 0x04,
+    OBJECT_IDENTIFIER: 0x06,
+    SEQUENCE: 0x10,
+    SET: 0x11,
+    PRINTABLE_STRING: 0x13,
+    UTC_TIME: 0x17,
+    GENERALIZED_TIME: 0x18,
+};
+const TAG_CLASS = {
+    UNIVERSAL: 0x00,
+    APPLICATION: 0x01,
+    CONTEXT_SPECIFIC: 0x02,
+    PRIVATE: 0x03,
+};
+// https://learn.microsoft.com/en-us/windows/win32/seccertenroll/about-encoded-tag-bytes
+class ASN1Tag {
+    number;
+    constructed;
+    class;
+    constructor(enc) {
+        // Bits 0 through 4 are the tag number
+        this.number = enc & 0x1f;
+        // Bit 5 is the constructed bit
+        this.constructed = (enc & 0x20) === 0x20;
+        // Bit 6 & 7 are the class
+        this.class = enc >> 6;
+        if (this.number === 0x1f) {
+            throw new error_1.ASN1ParseError('long form tags not supported');
+        }
+        if (this.class === TAG_CLASS.UNIVERSAL && this.number === 0x00) {
+            throw new error_1.ASN1ParseError('unsupported tag 0x00');
+        }
+    }
+    isUniversal() {
+        return this.class === TAG_CLASS.UNIVERSAL;
+    }
+    isContextSpecific(num) {
+        const res = this.class === TAG_CLASS.CONTEXT_SPECIFIC;
+        return num !== undefined ? res && this.number === num : res;
+    }
+    isBoolean() {
+        return this.isUniversal() && this.number === UNIVERSAL_TAG.BOOLEAN;
+    }
+    isInteger() {
+        return this.isUniversal() && this.number === UNIVERSAL_TAG.INTEGER;
+    }
+    isBitString() {
+        return this.isUniversal() && this.number === UNIVERSAL_TAG.BIT_STRING;
+    }
+    isOctetString() {
+        return this.isUniversal() && this.number === UNIVERSAL_TAG.OCTET_STRING;
+    }
+    isOID() {
+        return (this.isUniversal() && this.number === UNIVERSAL_TAG.OBJECT_IDENTIFIER);
+    }
+    isUTCTime() {
+        return this.isUniversal() && this.number === UNIVERSAL_TAG.UTC_TIME;
+    }
+    isGeneralizedTime() {
+        return this.isUniversal() && this.number === UNIVERSAL_TAG.GENERALIZED_TIME;
+    }
+    toDER() {
+        return this.number | (this.constructed ? 0x20 : 0x00) | (this.class << 6);
+    }
+}
+exports.ASN1Tag = ASN1Tag;
+
+
+/***/ }),
+
+/***/ 9368:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createPublicKey = createPublicKey;
+exports.digest = digest;
+exports.verify = verify;
+exports.bufferEqual = bufferEqual;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const crypto_1 = __importDefault(__nccwpck_require__(6982));
+function createPublicKey(key, type = 'spki') {
+    if (typeof key === 'string') {
+        if (key.startsWith('-----')) {
+            return crypto_1.default.createPublicKey(key);
+        }
+        else {
+            return crypto_1.default.createPublicKey({
+                key: Buffer.from(key, 'base64'),
+                format: 'der',
+                type: type,
+            });
+        }
+    }
+    else {
+        return crypto_1.default.createPublicKey({ key, format: 'der', type: type });
+    }
+}
+function digest(algorithm, ...data) {
+    const hash = crypto_1.default.createHash(algorithm);
+    for (const d of data) {
+        hash.update(d);
+    }
+    return hash.digest();
+}
+function verify(data, key, signature, algorithm) {
+    // The try/catch is to work around an issue in Node 14.x where verify throws
+    // an error in some scenarios if the signature is invalid.
+    try {
+        return crypto_1.default.verify(algorithm, data, key, signature);
+    }
+    catch (e) {
+        /* istanbul ignore next */
+        return false;
+    }
+}
+function bufferEqual(a, b) {
+    try {
+        return crypto_1.default.timingSafeEqual(a, b);
+    }
+    catch {
+        /* istanbul ignore next */
+        return false;
+    }
+}
+
+
+/***/ }),
+
+/***/ 9032:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.preAuthEncoding = preAuthEncoding;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const PAE_PREFIX = 'DSSEv1';
+// DSSE Pre-Authentication Encoding
+function preAuthEncoding(payloadType, payload) {
+    const typeBytes = Buffer.from(payloadType, 'utf-8');
+    return Buffer.concat([
+        Buffer.from(`${PAE_PREFIX} ${typeBytes.length} `, 'ascii'),
+        typeBytes,
+        Buffer.from(` ${payload.length} `, 'ascii'),
+        payload,
+    ]);
+}
+
+
+/***/ }),
+
+/***/ 2788:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.base64Encode = base64Encode;
+exports.base64Decode = base64Decode;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const BASE64_ENCODING = 'base64';
+const UTF8_ENCODING = 'utf-8';
+function base64Encode(str) {
+    return Buffer.from(str, UTF8_ENCODING).toString(BASE64_ENCODING);
+}
+function base64Decode(str) {
+    return Buffer.from(str, BASE64_ENCODING).toString(UTF8_ENCODING);
+}
+
+
+/***/ }),
+
+/***/ 3917:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.X509SCTExtension = exports.X509Certificate = exports.EXTENSION_OID_SCT = exports.ByteStream = exports.RFC3161Timestamp = exports.pem = exports.json = exports.encoding = exports.dsse = exports.crypto = exports.ASN1Obj = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+var asn1_1 = __nccwpck_require__(6027);
+Object.defineProperty(exports, "ASN1Obj", ({ enumerable: true, get: function () { return asn1_1.ASN1Obj; } }));
+exports.crypto = __importStar(__nccwpck_require__(9368));
+exports.dsse = __importStar(__nccwpck_require__(9032));
+exports.encoding = __importStar(__nccwpck_require__(2788));
+exports.json = __importStar(__nccwpck_require__(3327));
+exports.pem = __importStar(__nccwpck_require__(1055));
+var rfc3161_1 = __nccwpck_require__(994);
+Object.defineProperty(exports, "RFC3161Timestamp", ({ enumerable: true, get: function () { return rfc3161_1.RFC3161Timestamp; } }));
+var stream_1 = __nccwpck_require__(1673);
+Object.defineProperty(exports, "ByteStream", ({ enumerable: true, get: function () { return stream_1.ByteStream; } }));
+var x509_1 = __nccwpck_require__(9358);
+Object.defineProperty(exports, "EXTENSION_OID_SCT", ({ enumerable: true, get: function () { return x509_1.EXTENSION_OID_SCT; } }));
+Object.defineProperty(exports, "X509Certificate", ({ enumerable: true, get: function () { return x509_1.X509Certificate; } }));
+Object.defineProperty(exports, "X509SCTExtension", ({ enumerable: true, get: function () { return x509_1.X509SCTExtension; } }));
+
+
+/***/ }),
+
+/***/ 3327:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.canonicalize = canonicalize;
+// JSON canonicalization per https://github.com/cyberphone/json-canonicalization
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function canonicalize(object) {
+    let buffer = '';
+    if (object === null || typeof object !== 'object' || object.toJSON != null) {
+        // Primitives or toJSONable objects
+        buffer += JSON.stringify(object);
+    }
+    else if (Array.isArray(object)) {
+        // Array - maintain element order
+        buffer += '[';
+        let first = true;
+        object.forEach((element) => {
+            if (!first) {
+                buffer += ',';
+            }
+            first = false;
+            // recursive call
+            buffer += canonicalize(element);
+        });
+        buffer += ']';
+    }
+    else {
+        // Object - Sort properties before serializing
+        buffer += '{';
+        let first = true;
+        Object.keys(object)
+            .sort()
+            .forEach((property) => {
+            if (!first) {
+                buffer += ',';
+            }
+            first = false;
+            buffer += JSON.stringify(property);
+            buffer += ':';
+            // recursive call
+            buffer += canonicalize(object[property]);
+        });
+        buffer += '}';
+    }
+    return buffer;
+}
+
+
+/***/ }),
+
+/***/ 1817:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SHA2_HASH_ALGOS = exports.RSA_SIGNATURE_ALGOS = exports.ECDSA_SIGNATURE_ALGOS = void 0;
+exports.ECDSA_SIGNATURE_ALGOS = {
+    '1.2.840.10045.4.3.1': 'sha224',
+    '1.2.840.10045.4.3.2': 'sha256',
+    '1.2.840.10045.4.3.3': 'sha384',
+    '1.2.840.10045.4.3.4': 'sha512',
+};
+exports.RSA_SIGNATURE_ALGOS = {
+    '1.2.840.113549.1.1.14': 'sha224',
+    '1.2.840.113549.1.1.11': 'sha256',
+    '1.2.840.113549.1.1.12': 'sha384',
+    '1.2.840.113549.1.1.13': 'sha512',
+};
+exports.SHA2_HASH_ALGOS = {
+    '2.16.840.1.101.3.4.2.1': 'sha256',
+    '2.16.840.1.101.3.4.2.2': 'sha384',
+    '2.16.840.1.101.3.4.2.3': 'sha512',
+};
+
+
+/***/ }),
+
+/***/ 1055:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.toDER = toDER;
+exports.fromDER = fromDER;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const PEM_HEADER = /-----BEGIN (.*)-----/;
+const PEM_FOOTER = /-----END (.*)-----/;
+function toDER(certificate) {
+    let der = '';
+    certificate.split('\n').forEach((line) => {
+        if (line.match(PEM_HEADER) || line.match(PEM_FOOTER)) {
+            return;
+        }
+        der += line;
+    });
+    return Buffer.from(der, 'base64');
+}
+// Translates a DER-encoded buffer into a PEM-encoded string. Standard PEM
+// encoding dictates that each certificate should have a trailing newline after
+// the footer.
+function fromDER(certificate, type = 'CERTIFICATE') {
+    // Base64-encode the certificate.
+    const der = certificate.toString('base64');
+    // Split the certificate into lines of 64 characters.
+    const lines = der.match(/.{1,64}/g) || '';
+    return [`-----BEGIN ${type}-----`, ...lines, `-----END ${type}-----`]
+        .join('\n')
+        .concat('\n');
+}
+
+
+/***/ }),
+
+/***/ 7512:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RFC3161TimestampVerificationError = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+class RFC3161TimestampVerificationError extends Error {
+}
+exports.RFC3161TimestampVerificationError = RFC3161TimestampVerificationError;
+
+
+/***/ }),
+
+/***/ 994:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RFC3161Timestamp = void 0;
+var timestamp_1 = __nccwpck_require__(2714);
+Object.defineProperty(exports, "RFC3161Timestamp", ({ enumerable: true, get: function () { return timestamp_1.RFC3161Timestamp; } }));
+
+
+/***/ }),
+
+/***/ 2714:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.RFC3161Timestamp = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const asn1_1 = __nccwpck_require__(6027);
+const crypto = __importStar(__nccwpck_require__(9368));
+const oid_1 = __nccwpck_require__(1817);
+const error_1 = __nccwpck_require__(7512);
+const tstinfo_1 = __nccwpck_require__(2925);
+const OID_PKCS9_CONTENT_TYPE_SIGNED_DATA = '1.2.840.113549.1.7.2';
+const OID_PKCS9_CONTENT_TYPE_TSTINFO = '1.2.840.113549.1.9.16.1.4';
+const OID_PKCS9_MESSAGE_DIGEST_KEY = '1.2.840.113549.1.9.4';
+class RFC3161Timestamp {
+    root;
+    constructor(asn1) {
+        this.root = asn1;
+    }
+    static parse(der) {
+        const asn1 = asn1_1.ASN1Obj.parseBuffer(der);
+        return new RFC3161Timestamp(asn1);
+    }
+    get status() {
+        return this.pkiStatusInfoObj.subs[0].toInteger();
+    }
+    get contentType() {
+        return this.contentTypeObj.toOID();
+    }
+    get eContentType() {
+        return this.eContentTypeObj.toOID();
+    }
+    get signingTime() {
+        return this.tstInfo.genTime;
+    }
+    get signerIssuer() {
+        return this.signerSidObj.subs[0].value;
+    }
+    get signerSerialNumber() {
+        return this.signerSidObj.subs[1].value;
+    }
+    get signerDigestAlgorithm() {
+        const oid = this.signerDigestAlgorithmObj.subs[0].toOID();
+        return oid_1.SHA2_HASH_ALGOS[oid];
+    }
+    get signatureAlgorithm() {
+        const oid = this.signatureAlgorithmObj.subs[0].toOID();
+        return oid_1.ECDSA_SIGNATURE_ALGOS[oid];
+    }
+    get signatureValue() {
+        return this.signatureValueObj.value;
+    }
+    get tstInfo() {
+        // Need to unpack tstInfo from an OCTET STRING
+        return new tstinfo_1.TSTInfo(this.eContentObj.subs[0].subs[0]);
+    }
+    verify(data, publicKey) {
+        if (!this.timeStampTokenObj) {
+            throw new error_1.RFC3161TimestampVerificationError('timeStampToken is missing');
+        }
+        // Check for expected ContentInfo content type
+        if (this.contentType !== OID_PKCS9_CONTENT_TYPE_SIGNED_DATA) {
+            throw new error_1.RFC3161TimestampVerificationError(`incorrect content type: ${this.contentType}`);
+        }
+        // Check for expected encapsulated content type
+        if (this.eContentType !== OID_PKCS9_CONTENT_TYPE_TSTINFO) {
+            throw new error_1.RFC3161TimestampVerificationError(`incorrect encapsulated content type: ${this.eContentType}`);
+        }
+        // Check that the tstInfo references the correct artifact
+        this.tstInfo.verify(data);
+        // Check that the signed message digest matches the tstInfo
+        this.verifyMessageDigest();
+        // Check that the signature is valid for the signed attributes
+        this.verifySignature(publicKey);
+    }
+    verifyMessageDigest() {
+        // Check that the tstInfo matches the signed data
+        const tstInfoDigest = crypto.digest(this.signerDigestAlgorithm, this.tstInfo.raw);
+        const expectedDigest = this.messageDigestAttributeObj.subs[1].subs[0].value;
+        if (!crypto.bufferEqual(tstInfoDigest, expectedDigest)) {
+            throw new error_1.RFC3161TimestampVerificationError('signed data does not match tstInfo');
+        }
+    }
+    verifySignature(key) {
+        // Encode the signed attributes for verification
+        const signedAttrs = this.signedAttrsObj.toDER();
+        signedAttrs[0] = 0x31; // Change context-specific tag to SET
+        // Check that the signature is valid for the signed attributes
+        const verified = crypto.verify(signedAttrs, key, this.signatureValue, this.signatureAlgorithm);
+        if (!verified) {
+            throw new error_1.RFC3161TimestampVerificationError('signature verification failed');
+        }
+    }
+    // https://www.rfc-editor.org/rfc/rfc3161#section-2.4.2
+    get pkiStatusInfoObj() {
+        // pkiStatusInfo is the first element of the timestamp response sequence
+        return this.root.subs[0];
+    }
+    // https://www.rfc-editor.org/rfc/rfc3161#section-2.4.2
+    get timeStampTokenObj() {
+        // timeStampToken is the first element of the timestamp response sequence
+        return this.root.subs[1];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-3
+    get contentTypeObj() {
+        return this.timeStampTokenObj.subs[0];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5652#section-3
+    get signedDataObj() {
+        const obj = this.timeStampTokenObj.subs.find((sub) => sub.tag.isContextSpecific(0x00));
+        return obj.subs[0];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.1
+    get encapContentInfoObj() {
+        return this.signedDataObj.subs[2];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.1
+    get signerInfosObj() {
+        // SignerInfos is the last element of the signed data sequence
+        const sd = this.signedDataObj;
+        return sd.subs[sd.subs.length - 1];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5652#section-5.1
+    get signerInfoObj() {
+        // Only supporting one signer
+        return this.signerInfosObj.subs[0];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.2
+    get eContentTypeObj() {
+        return this.encapContentInfoObj.subs[0];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.2
+    get eContentObj() {
+        return this.encapContentInfoObj.subs[1];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.3
+    get signedAttrsObj() {
+        const signedAttrs = this.signerInfoObj.subs.find((sub) => sub.tag.isContextSpecific(0x00));
+        return signedAttrs;
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.3
+    get messageDigestAttributeObj() {
+        const messageDigest = this.signedAttrsObj.subs.find((sub) => sub.subs[0].tag.isOID() &&
+            sub.subs[0].toOID() === OID_PKCS9_MESSAGE_DIGEST_KEY);
+        return messageDigest;
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.3
+    get signerSidObj() {
+        return this.signerInfoObj.subs[1];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.3
+    get signerDigestAlgorithmObj() {
+        // Signature is the 2nd element of the signerInfoObj object
+        return this.signerInfoObj.subs[2];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.3
+    get signatureAlgorithmObj() {
+        // Signature is the 4th element of the signerInfoObj object
+        return this.signerInfoObj.subs[4];
+    }
+    // https://datatracker.ietf.org/doc/html/rfc5652#section-5.3
+    get signatureValueObj() {
+        // Signature is the 6th element of the signerInfoObj object
+        return this.signerInfoObj.subs[5];
+    }
+}
+exports.RFC3161Timestamp = RFC3161Timestamp;
+
+
+/***/ }),
+
+/***/ 2925:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TSTInfo = void 0;
+const crypto = __importStar(__nccwpck_require__(9368));
+const oid_1 = __nccwpck_require__(1817);
+const error_1 = __nccwpck_require__(7512);
+class TSTInfo {
+    root;
+    constructor(asn1) {
+        this.root = asn1;
+    }
+    get version() {
+        return this.root.subs[0].toInteger();
+    }
+    get genTime() {
+        return this.root.subs[4].toDate();
+    }
+    get messageImprintHashAlgorithm() {
+        const oid = this.messageImprintObj.subs[0].subs[0].toOID();
+        return oid_1.SHA2_HASH_ALGOS[oid];
+    }
+    get messageImprintHashedMessage() {
+        return this.messageImprintObj.subs[1].value;
+    }
+    get raw() {
+        return this.root.toDER();
+    }
+    verify(data) {
+        const digest = crypto.digest(this.messageImprintHashAlgorithm, data);
+        if (!crypto.bufferEqual(digest, this.messageImprintHashedMessage)) {
+            throw new error_1.RFC3161TimestampVerificationError('message imprint does not match artifact');
+        }
+    }
+    // https://www.rfc-editor.org/rfc/rfc3161#section-2.4.2
+    get messageImprintObj() {
+        return this.root.subs[2];
+    }
+}
+exports.TSTInfo = TSTInfo;
+
+
+/***/ }),
+
+/***/ 1673:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ByteStream = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+class StreamError extends Error {
+}
+class ByteStream {
+    static BLOCK_SIZE = 1024;
+    buf;
+    view;
+    start = 0;
+    constructor(buffer) {
+        if (buffer) {
+            this.buf = buffer;
+            this.view = Buffer.from(buffer);
+        }
+        else {
+            this.buf = Buffer.alloc(0);
+            this.view = Buffer.from(this.buf);
+        }
+    }
+    get buffer() {
+        return this.view.subarray(0, this.start);
+    }
+    get length() {
+        return this.view.byteLength;
+    }
+    get position() {
+        return this.start;
+    }
+    seek(position) {
+        this.start = position;
+    }
+    // Returns a Buffer containing the specified number of bytes starting at the
+    // given start position.
+    slice(start, len) {
+        const end = start + len;
+        if (end > this.length) {
+            throw new StreamError('request past end of buffer');
+        }
+        return this.view.subarray(start, end);
+    }
+    appendChar(char) {
+        this.ensureCapacity(1);
+        this.view[this.start] = char;
+        this.start += 1;
+    }
+    appendUint16(num) {
+        this.ensureCapacity(2);
+        const value = new Uint16Array([num]);
+        const view = new Uint8Array(value.buffer);
+        this.view[this.start] = view[1];
+        this.view[this.start + 1] = view[0];
+        this.start += 2;
+    }
+    appendUint24(num) {
+        this.ensureCapacity(3);
+        const value = new Uint32Array([num]);
+        const view = new Uint8Array(value.buffer);
+        this.view[this.start] = view[2];
+        this.view[this.start + 1] = view[1];
+        this.view[this.start + 2] = view[0];
+        this.start += 3;
+    }
+    appendView(view) {
+        this.ensureCapacity(view.length);
+        this.view.set(view, this.start);
+        this.start += view.length;
+    }
+    getBlock(size) {
+        if (size <= 0) {
+            return Buffer.alloc(0);
+        }
+        if (this.start + size > this.view.length) {
+            throw new Error('request past end of buffer');
+        }
+        const result = this.view.subarray(this.start, this.start + size);
+        this.start += size;
+        return result;
+    }
+    getUint8() {
+        return this.getBlock(1)[0];
+    }
+    getUint16() {
+        const block = this.getBlock(2);
+        return (block[0] << 8) | block[1];
+    }
+    ensureCapacity(size) {
+        if (this.start + size > this.view.byteLength) {
+            const blockSize = ByteStream.BLOCK_SIZE + (size > ByteStream.BLOCK_SIZE ? size : 0);
+            this.realloc(this.view.byteLength + blockSize);
+        }
+    }
+    realloc(size) {
+        const newArray = Buffer.alloc(size);
+        const newView = Buffer.from(newArray);
+        // Copy the old buffer into the new one
+        newView.set(this.view);
+        this.buf = newArray;
+        this.view = newView;
+    }
+}
+exports.ByteStream = ByteStream;
+
+
+/***/ }),
+
+/***/ 3566:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.X509Certificate = exports.EXTENSION_OID_SCT = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const asn1_1 = __nccwpck_require__(6027);
+const crypto = __importStar(__nccwpck_require__(9368));
+const oid_1 = __nccwpck_require__(1817);
+const pem = __importStar(__nccwpck_require__(1055));
+const ext_1 = __nccwpck_require__(6389);
+const EXTENSION_OID_SUBJECT_KEY_ID = '2.5.29.14';
+const EXTENSION_OID_KEY_USAGE = '2.5.29.15';
+const EXTENSION_OID_SUBJECT_ALT_NAME = '2.5.29.17';
+const EXTENSION_OID_BASIC_CONSTRAINTS = '2.5.29.19';
+const EXTENSION_OID_AUTHORITY_KEY_ID = '2.5.29.35';
+exports.EXTENSION_OID_SCT = '1.3.6.1.4.1.11129.2.4.2';
+class X509Certificate {
+    root;
+    constructor(asn1) {
+        this.root = asn1;
+    }
+    static parse(cert) {
+        const der = typeof cert === 'string' ? pem.toDER(cert) : cert;
+        const asn1 = asn1_1.ASN1Obj.parseBuffer(der);
+        return new X509Certificate(asn1);
+    }
+    get tbsCertificate() {
+        return this.tbsCertificateObj;
+    }
+    get version() {
+        // version number is the first element of the version context specific tag
+        const ver = this.versionObj.subs[0].toInteger();
+        return `v${(ver + BigInt(1)).toString()}`;
+    }
+    get serialNumber() {
+        return this.serialNumberObj.value;
+    }
+    get notBefore() {
+        // notBefore is the first element of the validity sequence
+        return this.validityObj.subs[0].toDate();
+    }
+    get notAfter() {
+        // notAfter is the second element of the validity sequence
+        return this.validityObj.subs[1].toDate();
+    }
+    get issuer() {
+        return this.issuerObj.value;
+    }
+    get subject() {
+        return this.subjectObj.value;
+    }
+    get publicKey() {
+        return this.subjectPublicKeyInfoObj.toDER();
+    }
+    get signatureAlgorithm() {
+        const oid = this.signatureAlgorithmObj.subs[0].toOID();
+        if (oid_1.RSA_SIGNATURE_ALGOS[oid]) {
+            return oid_1.RSA_SIGNATURE_ALGOS[oid];
+        }
+        return oid_1.ECDSA_SIGNATURE_ALGOS[oid];
+    }
+    get signatureValue() {
+        // Signature value is a bit string, so we need to skip the first byte
+        return this.signatureValueObj.value.subarray(1);
+    }
+    get subjectAltName() {
+        const ext = this.extSubjectAltName;
+        return ext?.uri || /* istanbul ignore next */ ext?.rfc822Name;
+    }
+    get extensions() {
+        // The extension list is the first (and only) element of the extensions
+        // context specific tag
+        /* istanbul ignore next */
+        const extSeq = this.extensionsObj?.subs[0];
+        /* istanbul ignore next */
+        return extSeq?.subs || [];
+    }
+    get extKeyUsage() {
+        const ext = this.findExtension(EXTENSION_OID_KEY_USAGE);
+        return ext ? new ext_1.X509KeyUsageExtension(ext) : undefined;
+    }
+    get extBasicConstraints() {
+        const ext = this.findExtension(EXTENSION_OID_BASIC_CONSTRAINTS);
+        return ext ? new ext_1.X509BasicConstraintsExtension(ext) : undefined;
+    }
+    get extSubjectAltName() {
+        const ext = this.findExtension(EXTENSION_OID_SUBJECT_ALT_NAME);
+        return ext ? new ext_1.X509SubjectAlternativeNameExtension(ext) : undefined;
+    }
+    get extAuthorityKeyID() {
+        const ext = this.findExtension(EXTENSION_OID_AUTHORITY_KEY_ID);
+        return ext ? new ext_1.X509AuthorityKeyIDExtension(ext) : undefined;
+    }
+    get extSubjectKeyID() {
+        const ext = this.findExtension(EXTENSION_OID_SUBJECT_KEY_ID);
+        return ext
+            ? new ext_1.X509SubjectKeyIDExtension(ext)
+            : /* istanbul ignore next */ undefined;
+    }
+    get extSCT() {
+        const ext = this.findExtension(exports.EXTENSION_OID_SCT);
+        return ext ? new ext_1.X509SCTExtension(ext) : undefined;
+    }
+    get isCA() {
+        const ca = this.extBasicConstraints?.isCA || false;
+        // If the KeyUsage extension is present, keyCertSign must be set
+        /* istanbul ignore else */
+        if (this.extKeyUsage) {
+            return ca && this.extKeyUsage.keyCertSign;
+        }
+        // TODO: test coverage for this case
+        /* istanbul ignore next */
+        return ca;
+    }
+    extension(oid) {
+        const ext = this.findExtension(oid);
+        return ext ? new ext_1.X509Extension(ext) : undefined;
+    }
+    verify(issuerCertificate) {
+        // Use the issuer's public key if provided, otherwise use the subject's
+        const publicKey = issuerCertificate?.publicKey || this.publicKey;
+        const key = crypto.createPublicKey(publicKey);
+        return crypto.verify(this.tbsCertificate.toDER(), key, this.signatureValue, this.signatureAlgorithm);
+    }
+    validForDate(date) {
+        return this.notBefore <= date && date <= this.notAfter;
+    }
+    equals(other) {
+        return this.root.toDER().equals(other.root.toDER());
+    }
+    // Creates a copy of the certificate with a new buffer
+    clone() {
+        const der = this.root.toDER();
+        const clone = Buffer.alloc(der.length);
+        der.copy(clone);
+        return X509Certificate.parse(clone);
+    }
+    findExtension(oid) {
+        // Find the extension with the given OID. The OID will always be the first
+        // element of the extension sequence
+        return this.extensions.find((ext) => ext.subs[0].toOID() === oid);
+    }
+    /////////////////////////////////////////////////////////////////////////////
+    // The following properties use the documented x509 structure to locate the
+    // desired ASN.1 object
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.1.1
+    get tbsCertificateObj() {
+        // tbsCertificate is the first element of the certificate sequence
+        return this.root.subs[0];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.1.2
+    get signatureAlgorithmObj() {
+        // signatureAlgorithm is the second element of the certificate sequence
+        return this.root.subs[1];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.1.3
+    get signatureValueObj() {
+        // signatureValue is the third element of the certificate sequence
+        return this.root.subs[2];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.1
+    get versionObj() {
+        // version is the first element of the tbsCertificate sequence
+        return this.tbsCertificateObj.subs[0];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.2
+    get serialNumberObj() {
+        // serialNumber is the second element of the tbsCertificate sequence
+        return this.tbsCertificateObj.subs[1];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.4
+    get issuerObj() {
+        // issuer is the fourth element of the tbsCertificate sequence
+        return this.tbsCertificateObj.subs[3];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.5
+    get validityObj() {
+        // version is the fifth element of the tbsCertificate sequence
+        return this.tbsCertificateObj.subs[4];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.6
+    get subjectObj() {
+        // subject is the sixth element of the tbsCertificate sequence
+        return this.tbsCertificateObj.subs[5];
+    }
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.7
+    get subjectPublicKeyInfoObj() {
+        // subjectPublicKeyInfo is the seventh element of the tbsCertificate sequence
+        return this.tbsCertificateObj.subs[6];
+    }
+    // Extensions can't be located by index because their position varies. Instead,
+    // we need to find the extensions context specific tag
+    // https://www.rfc-editor.org/rfc/rfc5280#section-4.1.2.9
+    get extensionsObj() {
+        return this.tbsCertificateObj.subs.find((sub) => sub.tag.isContextSpecific(0x03));
+    }
+}
+exports.X509Certificate = X509Certificate;
+
+
+/***/ }),
+
+/***/ 6389:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.X509SCTExtension = exports.X509SubjectKeyIDExtension = exports.X509AuthorityKeyIDExtension = exports.X509SubjectAlternativeNameExtension = exports.X509KeyUsageExtension = exports.X509BasicConstraintsExtension = exports.X509Extension = void 0;
+const stream_1 = __nccwpck_require__(1673);
+const sct_1 = __nccwpck_require__(6144);
+// https://www.rfc-editor.org/rfc/rfc5280#section-4.1
+class X509Extension {
+    root;
+    constructor(asn1) {
+        this.root = asn1;
+    }
+    get oid() {
+        return this.root.subs[0].toOID();
+    }
+    get critical() {
+        // The critical field is optional and will be the second element of the
+        // extension sequence if present. Default to false if not present.
+        return this.root.subs.length === 3 ? this.root.subs[1].toBoolean() : false;
+    }
+    get value() {
+        return this.extnValueObj.value;
+    }
+    get valueObj() {
+        return this.extnValueObj;
+    }
+    get extnValueObj() {
+        // The extnValue field will be the last element of the extension sequence
+        return this.root.subs[this.root.subs.length - 1];
+    }
+}
+exports.X509Extension = X509Extension;
+// https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.9
+class X509BasicConstraintsExtension extends X509Extension {
+    get isCA() {
+        return this.sequence.subs[0]?.toBoolean() ?? false;
+    }
+    get pathLenConstraint() {
+        return this.sequence.subs.length > 1
+            ? this.sequence.subs[1].toInteger()
+            : undefined;
+    }
+    // The extnValue field contains a single sequence wrapping the isCA and
+    // pathLenConstraint.
+    get sequence() {
+        return this.extnValueObj.subs[0];
+    }
+}
+exports.X509BasicConstraintsExtension = X509BasicConstraintsExtension;
+// https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.3
+class X509KeyUsageExtension extends X509Extension {
+    get digitalSignature() {
+        return this.bitString[0] === 1;
+    }
+    get keyCertSign() {
+        return this.bitString[5] === 1;
+    }
+    get crlSign() {
+        return this.bitString[6] === 1;
+    }
+    // The extnValue field contains a single bit string which is a bit mask
+    // indicating which key usages are enabled.
+    get bitString() {
+        return this.extnValueObj.subs[0].toBitString();
+    }
+}
+exports.X509KeyUsageExtension = X509KeyUsageExtension;
+// https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
+class X509SubjectAlternativeNameExtension extends X509Extension {
+    get rfc822Name() {
+        return this.findGeneralName(0x01)?.value.toString('ascii');
+    }
+    get uri() {
+        return this.findGeneralName(0x06)?.value.toString('ascii');
+    }
+    // Retrieve the value of an otherName with the given OID.
+    otherName(oid) {
+        const otherName = this.findGeneralName(0x00);
+        if (otherName === undefined) {
+            return undefined;
+        }
+        // The otherName is a sequence containing an OID and a value.
+        // Need to check that the OID matches the one we're looking for.
+        const otherNameOID = otherName.subs[0].toOID();
+        if (otherNameOID !== oid) {
+            return undefined;
+        }
+        // The otherNameValue is a sequence containing the actual value.
+        const otherNameValue = otherName.subs[1];
+        return otherNameValue.subs[0].value.toString('ascii');
+    }
+    findGeneralName(tag) {
+        return this.generalNames.find((gn) => gn.tag.isContextSpecific(tag));
+    }
+    // The extnValue field contains a sequence of GeneralNames.
+    get generalNames() {
+        return this.extnValueObj.subs[0].subs;
+    }
+}
+exports.X509SubjectAlternativeNameExtension = X509SubjectAlternativeNameExtension;
+// https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.1
+class X509AuthorityKeyIDExtension extends X509Extension {
+    get keyIdentifier() {
+        return this.findSequenceMember(0x00)?.value;
+    }
+    findSequenceMember(tag) {
+        return this.sequence.subs.find((el) => el.tag.isContextSpecific(tag));
+    }
+    // The extnValue field contains a single sequence wrapping the keyIdentifier
+    get sequence() {
+        return this.extnValueObj.subs[0];
+    }
+}
+exports.X509AuthorityKeyIDExtension = X509AuthorityKeyIDExtension;
+// https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.2
+class X509SubjectKeyIDExtension extends X509Extension {
+    get keyIdentifier() {
+        return this.extnValueObj.subs[0].value;
+    }
+}
+exports.X509SubjectKeyIDExtension = X509SubjectKeyIDExtension;
+// https://www.rfc-editor.org/rfc/rfc6962#section-3.3
+class X509SCTExtension extends X509Extension {
+    constructor(asn1) {
+        super(asn1);
+    }
+    get signedCertificateTimestamps() {
+        const buf = this.extnValueObj.subs[0].value;
+        const stream = new stream_1.ByteStream(buf);
+        // The overall list length is encoded in the first two bytes -- note this
+        // is the length of the list in bytes, NOT the number of SCTs in the list
+        const end = stream.getUint16() + 2;
+        const sctList = [];
+        while (stream.position < end) {
+            // Read the length of the next SCT
+            const sctLength = stream.getUint16();
+            // Slice out the bytes for the next SCT and parse it
+            const sct = stream.getBlock(sctLength);
+            sctList.push(sct_1.SignedCertificateTimestamp.parse(sct));
+        }
+        if (stream.position !== end) {
+            throw new Error('SCT list length does not match actual length');
+        }
+        return sctList;
+    }
+}
+exports.X509SCTExtension = X509SCTExtension;
+
+
+/***/ }),
+
+/***/ 9358:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.X509SCTExtension = exports.X509Certificate = exports.EXTENSION_OID_SCT = void 0;
+var cert_1 = __nccwpck_require__(3566);
+Object.defineProperty(exports, "EXTENSION_OID_SCT", ({ enumerable: true, get: function () { return cert_1.EXTENSION_OID_SCT; } }));
+Object.defineProperty(exports, "X509Certificate", ({ enumerable: true, get: function () { return cert_1.X509Certificate; } }));
+var ext_1 = __nccwpck_require__(6389);
+Object.defineProperty(exports, "X509SCTExtension", ({ enumerable: true, get: function () { return ext_1.X509SCTExtension; } }));
+
+
+/***/ }),
+
+/***/ 6144:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SignedCertificateTimestamp = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const crypto = __importStar(__nccwpck_require__(9368));
+const stream_1 = __nccwpck_require__(1673);
+class SignedCertificateTimestamp {
+    version;
+    logID;
+    timestamp;
+    extensions;
+    hashAlgorithm;
+    signatureAlgorithm;
+    signature;
+    constructor(options) {
+        this.version = options.version;
+        this.logID = options.logID;
+        this.timestamp = options.timestamp;
+        this.extensions = options.extensions;
+        this.hashAlgorithm = options.hashAlgorithm;
+        this.signatureAlgorithm = options.signatureAlgorithm;
+        this.signature = options.signature;
+    }
+    get datetime() {
+        return new Date(Number(this.timestamp.readBigInt64BE()));
+    }
+    // Returns the hash algorithm used to generate the SCT's signature.
+    // https://www.rfc-editor.org/rfc/rfc5246#section-7.4.1.4.1
+    get algorithm() {
+        switch (this.hashAlgorithm) {
+            /* istanbul ignore next */
+            case 0:
+                return 'none';
+            /* istanbul ignore next */
+            case 1:
+                return 'md5';
+            /* istanbul ignore next */
+            case 2:
+                return 'sha1';
+            /* istanbul ignore next */
+            case 3:
+                return 'sha224';
+            case 4:
+                return 'sha256';
+            /* istanbul ignore next */
+            case 5:
+                return 'sha384';
+            /* istanbul ignore next */
+            case 6:
+                return 'sha512';
+            /* istanbul ignore next */
+            default:
+                return 'unknown';
+        }
+    }
+    verify(preCert, key) {
+        // Assemble the digitally-signed struct (the data over which the signature
+        // was generated).
+        // https://www.rfc-editor.org/rfc/rfc6962#section-3.2
+        const stream = new stream_1.ByteStream();
+        stream.appendChar(this.version);
+        stream.appendChar(0x00); // SignatureType = certificate_timestamp(0)
+        stream.appendView(this.timestamp);
+        stream.appendUint16(0x01); // LogEntryType = precert_entry(1)
+        stream.appendView(preCert);
+        stream.appendUint16(this.extensions.byteLength);
+        /* istanbul ignore next - extensions are very uncommon */
+        if (this.extensions.byteLength > 0) {
+            stream.appendView(this.extensions);
+        }
+        return crypto.verify(stream.buffer, key, this.signature, this.algorithm);
+    }
+    // Parses a SignedCertificateTimestamp from a buffer. SCTs are encoded using
+    // TLS encoding which means the fields and lengths of most fields are
+    // specified as part of the SCT and TLS specs.
+    // https://www.rfc-editor.org/rfc/rfc6962#section-3.2
+    // https://www.rfc-editor.org/rfc/rfc5246#section-7.4.1.4.1
+    static parse(buf) {
+        const stream = new stream_1.ByteStream(buf);
+        // Version - enum { v1(0), (255) }
+        const version = stream.getUint8();
+        // Log ID  - struct { opaque key_id[32]; }
+        const logID = stream.getBlock(32);
+        // Timestamp - uint64
+        const timestamp = stream.getBlock(8);
+        // Extensions - opaque extensions<0..2^16-1>;
+        const extenstionLength = stream.getUint16();
+        const extensions = stream.getBlock(extenstionLength);
+        // Hash algo - enum { sha256(4), . . . (255) }
+        const hashAlgorithm = stream.getUint8();
+        // Signature algo - enum { anonymous(0), rsa(1), dsa(2), ecdsa(3), (255) }
+        const signatureAlgorithm = stream.getUint8();
+        // Signature  - opaque signature<0..2^16-1>;
+        const sigLength = stream.getUint16();
+        const signature = stream.getBlock(sigLength);
+        // Check that we read the entire buffer
+        if (stream.position !== buf.length) {
+            throw new Error('SCT buffer length mismatch');
+        }
+        return new SignedCertificateTimestamp({
+            version,
+            logID,
+            timestamp,
+            extensions,
+            hashAlgorithm,
+            signatureAlgorithm,
+            signature,
+        });
+    }
+}
+exports.SignedCertificateTimestamp = SignedCertificateTimestamp;
+
+
+/***/ }),
+
+/***/ 4649:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: envelope.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Signature = exports.Envelope = void 0;
+exports.Envelope = {
+    fromJSON(object) {
+        return {
+            payload: isSet(object.payload) ? Buffer.from(bytesFromBase64(object.payload)) : Buffer.alloc(0),
+            payloadType: isSet(object.payloadType) ? globalThis.String(object.payloadType) : "",
+            signatures: globalThis.Array.isArray(object?.signatures)
+                ? object.signatures.map((e) => exports.Signature.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.payload.length !== 0) {
+            obj.payload = base64FromBytes(message.payload);
+        }
+        if (message.payloadType !== "") {
+            obj.payloadType = message.payloadType;
+        }
+        if (message.signatures?.length) {
+            obj.signatures = message.signatures.map((e) => exports.Signature.toJSON(e));
+        }
+        return obj;
+    },
+};
+exports.Signature = {
+    fromJSON(object) {
+        return {
+            sig: isSet(object.sig) ? Buffer.from(bytesFromBase64(object.sig)) : Buffer.alloc(0),
+            keyid: isSet(object.keyid) ? globalThis.String(object.keyid) : "",
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.sig.length !== 0) {
+            obj.sig = base64FromBytes(message.sig);
+        }
+        if (message.keyid !== "") {
+            obj.keyid = message.keyid;
+        }
+        return obj;
+    },
+};
+function bytesFromBase64(b64) {
+    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+}
+function base64FromBytes(arr) {
+    return globalThis.Buffer.from(arr).toString("base64");
+}
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 5000:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: google/protobuf/timestamp.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Timestamp = void 0;
+exports.Timestamp = {
+    fromJSON(object) {
+        return {
+            seconds: isSet(object.seconds) ? globalThis.String(object.seconds) : "0",
+            nanos: isSet(object.nanos) ? globalThis.Number(object.nanos) : 0,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.seconds !== "0") {
+            obj.seconds = message.seconds;
+        }
+        if (message.nanos !== 0) {
+            obj.nanos = Math.round(message.nanos);
+        }
+        return obj;
+    },
+};
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 6764:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: rekor/v2/dsse.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DSSELogEntryV002 = exports.DSSERequestV002 = void 0;
+/* eslint-disable */
+const envelope_1 = __nccwpck_require__(4649);
+const sigstore_common_1 = __nccwpck_require__(5334);
+const verifier_1 = __nccwpck_require__(7543);
+exports.DSSERequestV002 = {
+    fromJSON(object) {
+        return {
+            envelope: isSet(object.envelope) ? envelope_1.Envelope.fromJSON(object.envelope) : undefined,
+            verifiers: globalThis.Array.isArray(object?.verifiers)
+                ? object.verifiers.map((e) => verifier_1.Verifier.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.envelope !== undefined) {
+            obj.envelope = envelope_1.Envelope.toJSON(message.envelope);
+        }
+        if (message.verifiers?.length) {
+            obj.verifiers = message.verifiers.map((e) => verifier_1.Verifier.toJSON(e));
+        }
+        return obj;
+    },
+};
+exports.DSSELogEntryV002 = {
+    fromJSON(object) {
+        return {
+            payloadHash: isSet(object.payloadHash) ? sigstore_common_1.HashOutput.fromJSON(object.payloadHash) : undefined,
+            signatures: globalThis.Array.isArray(object?.signatures)
+                ? object.signatures.map((e) => verifier_1.Signature.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.payloadHash !== undefined) {
+            obj.payloadHash = sigstore_common_1.HashOutput.toJSON(message.payloadHash);
+        }
+        if (message.signatures?.length) {
+            obj.signatures = message.signatures.map((e) => verifier_1.Signature.toJSON(e));
+        }
+        return obj;
+    },
+};
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 381:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: rekor/v2/entry.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CreateEntryRequest = exports.Spec = exports.Entry = void 0;
+/* eslint-disable */
+const dsse_1 = __nccwpck_require__(6764);
+const hashedrekord_1 = __nccwpck_require__(4969);
+exports.Entry = {
+    fromJSON(object) {
+        return {
+            kind: isSet(object.kind) ? globalThis.String(object.kind) : "",
+            apiVersion: isSet(object.apiVersion) ? globalThis.String(object.apiVersion) : "",
+            spec: isSet(object.spec) ? exports.Spec.fromJSON(object.spec) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.kind !== "") {
+            obj.kind = message.kind;
+        }
+        if (message.apiVersion !== "") {
+            obj.apiVersion = message.apiVersion;
+        }
+        if (message.spec !== undefined) {
+            obj.spec = exports.Spec.toJSON(message.spec);
+        }
+        return obj;
+    },
+};
+exports.Spec = {
+    fromJSON(object) {
+        return {
+            spec: isSet(object.hashedRekordV002)
+                ? { $case: "hashedRekordV002", hashedRekordV002: hashedrekord_1.HashedRekordLogEntryV002.fromJSON(object.hashedRekordV002) }
+                : isSet(object.dsseV002)
+                    ? { $case: "dsseV002", dsseV002: dsse_1.DSSELogEntryV002.fromJSON(object.dsseV002) }
+                    : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.spec?.$case === "hashedRekordV002") {
+            obj.hashedRekordV002 = hashedrekord_1.HashedRekordLogEntryV002.toJSON(message.spec.hashedRekordV002);
+        }
+        else if (message.spec?.$case === "dsseV002") {
+            obj.dsseV002 = dsse_1.DSSELogEntryV002.toJSON(message.spec.dsseV002);
+        }
+        return obj;
+    },
+};
+exports.CreateEntryRequest = {
+    fromJSON(object) {
+        return {
+            spec: isSet(object.hashedRekordRequestV002)
+                ? {
+                    $case: "hashedRekordRequestV002",
+                    hashedRekordRequestV002: hashedrekord_1.HashedRekordRequestV002.fromJSON(object.hashedRekordRequestV002),
+                }
+                : isSet(object.dsseRequestV002)
+                    ? { $case: "dsseRequestV002", dsseRequestV002: dsse_1.DSSERequestV002.fromJSON(object.dsseRequestV002) }
+                    : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.spec?.$case === "hashedRekordRequestV002") {
+            obj.hashedRekordRequestV002 = hashedrekord_1.HashedRekordRequestV002.toJSON(message.spec.hashedRekordRequestV002);
+        }
+        else if (message.spec?.$case === "dsseRequestV002") {
+            obj.dsseRequestV002 = dsse_1.DSSERequestV002.toJSON(message.spec.dsseRequestV002);
+        }
+        return obj;
+    },
+};
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 4969:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: rekor/v2/hashedrekord.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HashedRekordLogEntryV002 = exports.HashedRekordRequestV002 = void 0;
+/* eslint-disable */
+const sigstore_common_1 = __nccwpck_require__(5334);
+const verifier_1 = __nccwpck_require__(7543);
+exports.HashedRekordRequestV002 = {
+    fromJSON(object) {
+        return {
+            digest: isSet(object.digest) ? Buffer.from(bytesFromBase64(object.digest)) : Buffer.alloc(0),
+            signature: isSet(object.signature) ? verifier_1.Signature.fromJSON(object.signature) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.digest.length !== 0) {
+            obj.digest = base64FromBytes(message.digest);
+        }
+        if (message.signature !== undefined) {
+            obj.signature = verifier_1.Signature.toJSON(message.signature);
+        }
+        return obj;
+    },
+};
+exports.HashedRekordLogEntryV002 = {
+    fromJSON(object) {
+        return {
+            data: isSet(object.data) ? sigstore_common_1.HashOutput.fromJSON(object.data) : undefined,
+            signature: isSet(object.signature) ? verifier_1.Signature.fromJSON(object.signature) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.data !== undefined) {
+            obj.data = sigstore_common_1.HashOutput.toJSON(message.data);
+        }
+        if (message.signature !== undefined) {
+            obj.signature = verifier_1.Signature.toJSON(message.signature);
+        }
+        return obj;
+    },
+};
+function bytesFromBase64(b64) {
+    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+}
+function base64FromBytes(arr) {
+    return globalThis.Buffer.from(arr).toString("base64");
+}
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 7543:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: rekor/v2/verifier.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Signature = exports.Verifier = exports.PublicKey = void 0;
+/* eslint-disable */
+const sigstore_common_1 = __nccwpck_require__(5334);
+exports.PublicKey = {
+    fromJSON(object) {
+        return { rawBytes: isSet(object.rawBytes) ? Buffer.from(bytesFromBase64(object.rawBytes)) : Buffer.alloc(0) };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.rawBytes.length !== 0) {
+            obj.rawBytes = base64FromBytes(message.rawBytes);
+        }
+        return obj;
+    },
+};
+exports.Verifier = {
+    fromJSON(object) {
+        return {
+            verifier: isSet(object.publicKey)
+                ? { $case: "publicKey", publicKey: exports.PublicKey.fromJSON(object.publicKey) }
+                : isSet(object.x509Certificate)
+                    ? { $case: "x509Certificate", x509Certificate: sigstore_common_1.X509Certificate.fromJSON(object.x509Certificate) }
+                    : undefined,
+            keyDetails: isSet(object.keyDetails) ? (0, sigstore_common_1.publicKeyDetailsFromJSON)(object.keyDetails) : 0,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.verifier?.$case === "publicKey") {
+            obj.publicKey = exports.PublicKey.toJSON(message.verifier.publicKey);
+        }
+        else if (message.verifier?.$case === "x509Certificate") {
+            obj.x509Certificate = sigstore_common_1.X509Certificate.toJSON(message.verifier.x509Certificate);
+        }
+        if (message.keyDetails !== 0) {
+            obj.keyDetails = (0, sigstore_common_1.publicKeyDetailsToJSON)(message.keyDetails);
+        }
+        return obj;
+    },
+};
+exports.Signature = {
+    fromJSON(object) {
+        return {
+            content: isSet(object.content) ? Buffer.from(bytesFromBase64(object.content)) : Buffer.alloc(0),
+            verifier: isSet(object.verifier) ? exports.Verifier.fromJSON(object.verifier) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.content.length !== 0) {
+            obj.content = base64FromBytes(message.content);
+        }
+        if (message.verifier !== undefined) {
+            obj.verifier = exports.Verifier.toJSON(message.verifier);
+        }
+        return obj;
+    },
+};
+function bytesFromBase64(b64) {
+    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+}
+function base64FromBytes(arr) {
+    return globalThis.Buffer.from(arr).toString("base64");
+}
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 715:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: sigstore_bundle.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Bundle = exports.VerificationMaterial = exports.TimestampVerificationData = void 0;
+/* eslint-disable */
+const envelope_1 = __nccwpck_require__(4649);
+const sigstore_common_1 = __nccwpck_require__(5334);
+const sigstore_rekor_1 = __nccwpck_require__(5204);
+exports.TimestampVerificationData = {
+    fromJSON(object) {
+        return {
+            rfc3161Timestamps: globalThis.Array.isArray(object?.rfc3161Timestamps)
+                ? object.rfc3161Timestamps.map((e) => sigstore_common_1.RFC3161SignedTimestamp.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.rfc3161Timestamps?.length) {
+            obj.rfc3161Timestamps = message.rfc3161Timestamps.map((e) => sigstore_common_1.RFC3161SignedTimestamp.toJSON(e));
+        }
+        return obj;
+    },
+};
+exports.VerificationMaterial = {
+    fromJSON(object) {
+        return {
+            content: isSet(object.publicKey)
+                ? { $case: "publicKey", publicKey: sigstore_common_1.PublicKeyIdentifier.fromJSON(object.publicKey) }
+                : isSet(object.x509CertificateChain)
+                    ? {
+                        $case: "x509CertificateChain",
+                        x509CertificateChain: sigstore_common_1.X509CertificateChain.fromJSON(object.x509CertificateChain),
+                    }
+                    : isSet(object.certificate)
+                        ? { $case: "certificate", certificate: sigstore_common_1.X509Certificate.fromJSON(object.certificate) }
+                        : undefined,
+            tlogEntries: globalThis.Array.isArray(object?.tlogEntries)
+                ? object.tlogEntries.map((e) => sigstore_rekor_1.TransparencyLogEntry.fromJSON(e))
+                : [],
+            timestampVerificationData: isSet(object.timestampVerificationData)
+                ? exports.TimestampVerificationData.fromJSON(object.timestampVerificationData)
+                : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.content?.$case === "publicKey") {
+            obj.publicKey = sigstore_common_1.PublicKeyIdentifier.toJSON(message.content.publicKey);
+        }
+        else if (message.content?.$case === "x509CertificateChain") {
+            obj.x509CertificateChain = sigstore_common_1.X509CertificateChain.toJSON(message.content.x509CertificateChain);
+        }
+        else if (message.content?.$case === "certificate") {
+            obj.certificate = sigstore_common_1.X509Certificate.toJSON(message.content.certificate);
+        }
+        if (message.tlogEntries?.length) {
+            obj.tlogEntries = message.tlogEntries.map((e) => sigstore_rekor_1.TransparencyLogEntry.toJSON(e));
+        }
+        if (message.timestampVerificationData !== undefined) {
+            obj.timestampVerificationData = exports.TimestampVerificationData.toJSON(message.timestampVerificationData);
+        }
+        return obj;
+    },
+};
+exports.Bundle = {
+    fromJSON(object) {
+        return {
+            mediaType: isSet(object.mediaType) ? globalThis.String(object.mediaType) : "",
+            verificationMaterial: isSet(object.verificationMaterial)
+                ? exports.VerificationMaterial.fromJSON(object.verificationMaterial)
+                : undefined,
+            content: isSet(object.messageSignature)
+                ? { $case: "messageSignature", messageSignature: sigstore_common_1.MessageSignature.fromJSON(object.messageSignature) }
+                : isSet(object.dsseEnvelope)
+                    ? { $case: "dsseEnvelope", dsseEnvelope: envelope_1.Envelope.fromJSON(object.dsseEnvelope) }
+                    : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.mediaType !== "") {
+            obj.mediaType = message.mediaType;
+        }
+        if (message.verificationMaterial !== undefined) {
+            obj.verificationMaterial = exports.VerificationMaterial.toJSON(message.verificationMaterial);
+        }
+        if (message.content?.$case === "messageSignature") {
+            obj.messageSignature = sigstore_common_1.MessageSignature.toJSON(message.content.messageSignature);
+        }
+        else if (message.content?.$case === "dsseEnvelope") {
+            obj.dsseEnvelope = envelope_1.Envelope.toJSON(message.content.dsseEnvelope);
+        }
+        return obj;
+    },
+};
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 5334:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: sigstore_common.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TimeRange = exports.X509CertificateChain = exports.SubjectAlternativeName = exports.X509Certificate = exports.DistinguishedName = exports.ObjectIdentifierValuePair = exports.ObjectIdentifier = exports.PublicKeyIdentifier = exports.PublicKey = exports.RFC3161SignedTimestamp = exports.LogId = exports.MessageSignature = exports.HashOutput = exports.SubjectAlternativeNameType = exports.PublicKeyDetails = exports.HashAlgorithm = void 0;
+exports.hashAlgorithmFromJSON = hashAlgorithmFromJSON;
+exports.hashAlgorithmToJSON = hashAlgorithmToJSON;
+exports.publicKeyDetailsFromJSON = publicKeyDetailsFromJSON;
+exports.publicKeyDetailsToJSON = publicKeyDetailsToJSON;
+exports.subjectAlternativeNameTypeFromJSON = subjectAlternativeNameTypeFromJSON;
+exports.subjectAlternativeNameTypeToJSON = subjectAlternativeNameTypeToJSON;
+/* eslint-disable */
+const timestamp_1 = __nccwpck_require__(5000);
+/**
+ * Only a subset of the secure hash standard algorithms are supported.
+ * See <https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf> for more
+ * details.
+ * UNSPECIFIED SHOULD not be used, primary reason for inclusion is to force
+ * any proto JSON serialization to emit the used hash algorithm, as default
+ * option is to *omit* the default value of an enum (which is the first
+ * value, represented by '0'.
+ */
+var HashAlgorithm;
+(function (HashAlgorithm) {
+    HashAlgorithm[HashAlgorithm["HASH_ALGORITHM_UNSPECIFIED"] = 0] = "HASH_ALGORITHM_UNSPECIFIED";
+    HashAlgorithm[HashAlgorithm["SHA2_256"] = 1] = "SHA2_256";
+    HashAlgorithm[HashAlgorithm["SHA2_384"] = 2] = "SHA2_384";
+    HashAlgorithm[HashAlgorithm["SHA2_512"] = 3] = "SHA2_512";
+    /**
+     * SHA3_256 - Used for LMS
+     *
+     * @deprecated
+     */
+    HashAlgorithm[HashAlgorithm["SHA3_256"] = 4] = "SHA3_256";
+    /**
+     * SHA3_384 - Used for LMS
+     *
+     * @deprecated
+     */
+    HashAlgorithm[HashAlgorithm["SHA3_384"] = 5] = "SHA3_384";
+})(HashAlgorithm || (exports.HashAlgorithm = HashAlgorithm = {}));
+function hashAlgorithmFromJSON(object) {
+    switch (object) {
+        case 0:
+        case "HASH_ALGORITHM_UNSPECIFIED":
+            return HashAlgorithm.HASH_ALGORITHM_UNSPECIFIED;
+        case 1:
+        case "SHA2_256":
+            return HashAlgorithm.SHA2_256;
+        case 2:
+        case "SHA2_384":
+            return HashAlgorithm.SHA2_384;
+        case 3:
+        case "SHA2_512":
+            return HashAlgorithm.SHA2_512;
+        case 4:
+        case "SHA3_256":
+            return HashAlgorithm.SHA3_256;
+        case 5:
+        case "SHA3_384":
+            return HashAlgorithm.SHA3_384;
+        default:
+            throw new globalThis.Error("Unrecognized enum value " + object + " for enum HashAlgorithm");
+    }
+}
+function hashAlgorithmToJSON(object) {
+    switch (object) {
+        case HashAlgorithm.HASH_ALGORITHM_UNSPECIFIED:
+            return "HASH_ALGORITHM_UNSPECIFIED";
+        case HashAlgorithm.SHA2_256:
+            return "SHA2_256";
+        case HashAlgorithm.SHA2_384:
+            return "SHA2_384";
+        case HashAlgorithm.SHA2_512:
+            return "SHA2_512";
+        case HashAlgorithm.SHA3_256:
+            return "SHA3_256";
+        case HashAlgorithm.SHA3_384:
+            return "SHA3_384";
+        default:
+            throw new globalThis.Error("Unrecognized enum value " + object + " for enum HashAlgorithm");
+    }
+}
+/**
+ * Details of a specific public key, capturing the the key encoding method,
+ * and signature algorithm.
+ *
+ * PublicKeyDetails captures the public key/hash algorithm combinations
+ * recommended in the Sigstore ecosystem.
+ *
+ * This is modelled as a linear set as we want to provide a small number of
+ * opinionated options instead of allowing every possible permutation.
+ *
+ * Any changes to this enum MUST be reflected in the algorithm registry.
+ *
+ * See: <https://github.com/sigstore/architecture-docs/blob/main/algorithm-registry.md>
+ *
+ * To avoid the possibility of contradicting formats such as PKCS1 with
+ * ED25519 the valid permutations are listed as a linear set instead of a
+ * cartesian set (i.e one combined variable instead of two, one for encoding
+ * and one for the signature algorithm).
+ */
+var PublicKeyDetails;
+(function (PublicKeyDetails) {
+    PublicKeyDetails[PublicKeyDetails["PUBLIC_KEY_DETAILS_UNSPECIFIED"] = 0] = "PUBLIC_KEY_DETAILS_UNSPECIFIED";
+    /**
+     * PKCS1_RSA_PKCS1V5 - RSA
+     *
+     * @deprecated
+     */
+    PublicKeyDetails[PublicKeyDetails["PKCS1_RSA_PKCS1V5"] = 1] = "PKCS1_RSA_PKCS1V5";
+    /**
+     * PKCS1_RSA_PSS - See RFC8017
+     *
+     * @deprecated
+     */
+    PublicKeyDetails[PublicKeyDetails["PKCS1_RSA_PSS"] = 2] = "PKCS1_RSA_PSS";
+    /** @deprecated */
+    PublicKeyDetails[PublicKeyDetails["PKIX_RSA_PKCS1V5"] = 3] = "PKIX_RSA_PKCS1V5";
+    /** @deprecated */
+    PublicKeyDetails[PublicKeyDetails["PKIX_RSA_PSS"] = 4] = "PKIX_RSA_PSS";
+    /** PKIX_RSA_PKCS1V15_2048_SHA256 - RSA public key in PKIX format, PKCS#1v1.5 signature */
+    PublicKeyDetails[PublicKeyDetails["PKIX_RSA_PKCS1V15_2048_SHA256"] = 9] = "PKIX_RSA_PKCS1V15_2048_SHA256";
+    PublicKeyDetails[PublicKeyDetails["PKIX_RSA_PKCS1V15_3072_SHA256"] = 10] = "PKIX_RSA_PKCS1V15_3072_SHA256";
+    PublicKeyDetails[PublicKeyDetails["PKIX_RSA_PKCS1V15_4096_SHA256"] = 11] = "PKIX_RSA_PKCS1V15_4096_SHA256";
+    /** PKIX_RSA_PSS_2048_SHA256 - RSA public key in PKIX format, RSASSA-PSS signature */
+    PublicKeyDetails[PublicKeyDetails["PKIX_RSA_PSS_2048_SHA256"] = 16] = "PKIX_RSA_PSS_2048_SHA256";
+    PublicKeyDetails[PublicKeyDetails["PKIX_RSA_PSS_3072_SHA256"] = 17] = "PKIX_RSA_PSS_3072_SHA256";
+    PublicKeyDetails[PublicKeyDetails["PKIX_RSA_PSS_4096_SHA256"] = 18] = "PKIX_RSA_PSS_4096_SHA256";
+    /**
+     * PKIX_ECDSA_P256_HMAC_SHA_256 - ECDSA
+     *
+     * @deprecated
+     */
+    PublicKeyDetails[PublicKeyDetails["PKIX_ECDSA_P256_HMAC_SHA_256"] = 6] = "PKIX_ECDSA_P256_HMAC_SHA_256";
+    /** PKIX_ECDSA_P256_SHA_256 - See NIST FIPS 186-4 */
+    PublicKeyDetails[PublicKeyDetails["PKIX_ECDSA_P256_SHA_256"] = 5] = "PKIX_ECDSA_P256_SHA_256";
+    PublicKeyDetails[PublicKeyDetails["PKIX_ECDSA_P384_SHA_384"] = 12] = "PKIX_ECDSA_P384_SHA_384";
+    PublicKeyDetails[PublicKeyDetails["PKIX_ECDSA_P521_SHA_512"] = 13] = "PKIX_ECDSA_P521_SHA_512";
+    /** PKIX_ED25519 - Ed 25519 */
+    PublicKeyDetails[PublicKeyDetails["PKIX_ED25519"] = 7] = "PKIX_ED25519";
+    PublicKeyDetails[PublicKeyDetails["PKIX_ED25519_PH"] = 8] = "PKIX_ED25519_PH";
+    /**
+     * PKIX_ECDSA_P384_SHA_256 - These algorithms are deprecated and should not be used, but they
+     * were/are being used by most Sigstore clients implementations.
+     *
+     * @deprecated
+     */
+    PublicKeyDetails[PublicKeyDetails["PKIX_ECDSA_P384_SHA_256"] = 19] = "PKIX_ECDSA_P384_SHA_256";
+    /** @deprecated */
+    PublicKeyDetails[PublicKeyDetails["PKIX_ECDSA_P521_SHA_256"] = 20] = "PKIX_ECDSA_P521_SHA_256";
+    /**
+     * LMS_SHA256 - LMS and LM-OTS
+     *
+     * These algorithms are deprecated and should not be used.
+     * There are no plans to support SLH-DSA at this time.
+     *
+     * USER WARNING: LMS and LM-OTS are both stateful signature schemes.
+     * Using them correctly requires discretion and careful consideration
+     * to ensure that individual secret keys are not used more than once.
+     * In addition, LM-OTS is a single-use scheme, meaning that it
+     * MUST NOT be used for more than one signature per LM-OTS key.
+     * If you cannot maintain these invariants, you MUST NOT use these
+     * schemes.
+     *
+     * @deprecated
+     */
+    PublicKeyDetails[PublicKeyDetails["LMS_SHA256"] = 14] = "LMS_SHA256";
+    /** @deprecated */
+    PublicKeyDetails[PublicKeyDetails["LMOTS_SHA256"] = 15] = "LMOTS_SHA256";
+    /**
+     * ML_DSA_44 - ML-DSA
+     *
+     * These ML_DSA_44, ML_DSA_65 and ML-DSA_87 algorithms are the pure variants
+     * that take data to sign rather than the prehash variants (HashML-DSA), which
+     * take digests. While considered quantum-resistant, their usage
+     * involves tradeoffs in that signatures and keys are much larger, and
+     * this makes deployments more costly.
+     *
+     * USER WARNING: ML_DSA_44, ML_DSA_65 and ML_DSA_87 are experimental algorithms.
+     * In the future they MAY be used by private Sigstore deployments, but
+     * they are not yet fully functional. This warning will be removed when
+     * these algorithms are widely supported by Sigstore clients and servers,
+     * but care should still be taken for production environments.
+     *
+     * See NIST FIPS 204, RFC 9881 for algorithm identifiers
+     */
+    PublicKeyDetails[PublicKeyDetails["ML_DSA_44"] = 23] = "ML_DSA_44";
+    PublicKeyDetails[PublicKeyDetails["ML_DSA_65"] = 21] = "ML_DSA_65";
+    PublicKeyDetails[PublicKeyDetails["ML_DSA_87"] = 22] = "ML_DSA_87";
+})(PublicKeyDetails || (exports.PublicKeyDetails = PublicKeyDetails = {}));
+function publicKeyDetailsFromJSON(object) {
+    switch (object) {
+        case 0:
+        case "PUBLIC_KEY_DETAILS_UNSPECIFIED":
+            return PublicKeyDetails.PUBLIC_KEY_DETAILS_UNSPECIFIED;
+        case 1:
+        case "PKCS1_RSA_PKCS1V5":
+            return PublicKeyDetails.PKCS1_RSA_PKCS1V5;
+        case 2:
+        case "PKCS1_RSA_PSS":
+            return PublicKeyDetails.PKCS1_RSA_PSS;
+        case 3:
+        case "PKIX_RSA_PKCS1V5":
+            return PublicKeyDetails.PKIX_RSA_PKCS1V5;
+        case 4:
+        case "PKIX_RSA_PSS":
+            return PublicKeyDetails.PKIX_RSA_PSS;
+        case 9:
+        case "PKIX_RSA_PKCS1V15_2048_SHA256":
+            return PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256;
+        case 10:
+        case "PKIX_RSA_PKCS1V15_3072_SHA256":
+            return PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256;
+        case 11:
+        case "PKIX_RSA_PKCS1V15_4096_SHA256":
+            return PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256;
+        case 16:
+        case "PKIX_RSA_PSS_2048_SHA256":
+            return PublicKeyDetails.PKIX_RSA_PSS_2048_SHA256;
+        case 17:
+        case "PKIX_RSA_PSS_3072_SHA256":
+            return PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256;
+        case 18:
+        case "PKIX_RSA_PSS_4096_SHA256":
+            return PublicKeyDetails.PKIX_RSA_PSS_4096_SHA256;
+        case 6:
+        case "PKIX_ECDSA_P256_HMAC_SHA_256":
+            return PublicKeyDetails.PKIX_ECDSA_P256_HMAC_SHA_256;
+        case 5:
+        case "PKIX_ECDSA_P256_SHA_256":
+            return PublicKeyDetails.PKIX_ECDSA_P256_SHA_256;
+        case 12:
+        case "PKIX_ECDSA_P384_SHA_384":
+            return PublicKeyDetails.PKIX_ECDSA_P384_SHA_384;
+        case 13:
+        case "PKIX_ECDSA_P521_SHA_512":
+            return PublicKeyDetails.PKIX_ECDSA_P521_SHA_512;
+        case 7:
+        case "PKIX_ED25519":
+            return PublicKeyDetails.PKIX_ED25519;
+        case 8:
+        case "PKIX_ED25519_PH":
+            return PublicKeyDetails.PKIX_ED25519_PH;
+        case 19:
+        case "PKIX_ECDSA_P384_SHA_256":
+            return PublicKeyDetails.PKIX_ECDSA_P384_SHA_256;
+        case 20:
+        case "PKIX_ECDSA_P521_SHA_256":
+            return PublicKeyDetails.PKIX_ECDSA_P521_SHA_256;
+        case 14:
+        case "LMS_SHA256":
+            return PublicKeyDetails.LMS_SHA256;
+        case 15:
+        case "LMOTS_SHA256":
+            return PublicKeyDetails.LMOTS_SHA256;
+        case 23:
+        case "ML_DSA_44":
+            return PublicKeyDetails.ML_DSA_44;
+        case 21:
+        case "ML_DSA_65":
+            return PublicKeyDetails.ML_DSA_65;
+        case 22:
+        case "ML_DSA_87":
+            return PublicKeyDetails.ML_DSA_87;
+        default:
+            throw new globalThis.Error("Unrecognized enum value " + object + " for enum PublicKeyDetails");
+    }
+}
+function publicKeyDetailsToJSON(object) {
+    switch (object) {
+        case PublicKeyDetails.PUBLIC_KEY_DETAILS_UNSPECIFIED:
+            return "PUBLIC_KEY_DETAILS_UNSPECIFIED";
+        case PublicKeyDetails.PKCS1_RSA_PKCS1V5:
+            return "PKCS1_RSA_PKCS1V5";
+        case PublicKeyDetails.PKCS1_RSA_PSS:
+            return "PKCS1_RSA_PSS";
+        case PublicKeyDetails.PKIX_RSA_PKCS1V5:
+            return "PKIX_RSA_PKCS1V5";
+        case PublicKeyDetails.PKIX_RSA_PSS:
+            return "PKIX_RSA_PSS";
+        case PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256:
+            return "PKIX_RSA_PKCS1V15_2048_SHA256";
+        case PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256:
+            return "PKIX_RSA_PKCS1V15_3072_SHA256";
+        case PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256:
+            return "PKIX_RSA_PKCS1V15_4096_SHA256";
+        case PublicKeyDetails.PKIX_RSA_PSS_2048_SHA256:
+            return "PKIX_RSA_PSS_2048_SHA256";
+        case PublicKeyDetails.PKIX_RSA_PSS_3072_SHA256:
+            return "PKIX_RSA_PSS_3072_SHA256";
+        case PublicKeyDetails.PKIX_RSA_PSS_4096_SHA256:
+            return "PKIX_RSA_PSS_4096_SHA256";
+        case PublicKeyDetails.PKIX_ECDSA_P256_HMAC_SHA_256:
+            return "PKIX_ECDSA_P256_HMAC_SHA_256";
+        case PublicKeyDetails.PKIX_ECDSA_P256_SHA_256:
+            return "PKIX_ECDSA_P256_SHA_256";
+        case PublicKeyDetails.PKIX_ECDSA_P384_SHA_384:
+            return "PKIX_ECDSA_P384_SHA_384";
+        case PublicKeyDetails.PKIX_ECDSA_P521_SHA_512:
+            return "PKIX_ECDSA_P521_SHA_512";
+        case PublicKeyDetails.PKIX_ED25519:
+            return "PKIX_ED25519";
+        case PublicKeyDetails.PKIX_ED25519_PH:
+            return "PKIX_ED25519_PH";
+        case PublicKeyDetails.PKIX_ECDSA_P384_SHA_256:
+            return "PKIX_ECDSA_P384_SHA_256";
+        case PublicKeyDetails.PKIX_ECDSA_P521_SHA_256:
+            return "PKIX_ECDSA_P521_SHA_256";
+        case PublicKeyDetails.LMS_SHA256:
+            return "LMS_SHA256";
+        case PublicKeyDetails.LMOTS_SHA256:
+            return "LMOTS_SHA256";
+        case PublicKeyDetails.ML_DSA_44:
+            return "ML_DSA_44";
+        case PublicKeyDetails.ML_DSA_65:
+            return "ML_DSA_65";
+        case PublicKeyDetails.ML_DSA_87:
+            return "ML_DSA_87";
+        default:
+            throw new globalThis.Error("Unrecognized enum value " + object + " for enum PublicKeyDetails");
+    }
+}
+var SubjectAlternativeNameType;
+(function (SubjectAlternativeNameType) {
+    SubjectAlternativeNameType[SubjectAlternativeNameType["SUBJECT_ALTERNATIVE_NAME_TYPE_UNSPECIFIED"] = 0] = "SUBJECT_ALTERNATIVE_NAME_TYPE_UNSPECIFIED";
+    SubjectAlternativeNameType[SubjectAlternativeNameType["EMAIL"] = 1] = "EMAIL";
+    SubjectAlternativeNameType[SubjectAlternativeNameType["URI"] = 2] = "URI";
+    /**
+     * OTHER_NAME - OID 1.3.6.1.4.1.57264.1.7
+     * See https://github.com/sigstore/fulcio/blob/main/docs/oid-info.md#1361415726417--othername-san
+     * for more details.
+     */
+    SubjectAlternativeNameType[SubjectAlternativeNameType["OTHER_NAME"] = 3] = "OTHER_NAME";
+})(SubjectAlternativeNameType || (exports.SubjectAlternativeNameType = SubjectAlternativeNameType = {}));
+function subjectAlternativeNameTypeFromJSON(object) {
+    switch (object) {
+        case 0:
+        case "SUBJECT_ALTERNATIVE_NAME_TYPE_UNSPECIFIED":
+            return SubjectAlternativeNameType.SUBJECT_ALTERNATIVE_NAME_TYPE_UNSPECIFIED;
+        case 1:
+        case "EMAIL":
+            return SubjectAlternativeNameType.EMAIL;
+        case 2:
+        case "URI":
+            return SubjectAlternativeNameType.URI;
+        case 3:
+        case "OTHER_NAME":
+            return SubjectAlternativeNameType.OTHER_NAME;
+        default:
+            throw new globalThis.Error("Unrecognized enum value " + object + " for enum SubjectAlternativeNameType");
+    }
+}
+function subjectAlternativeNameTypeToJSON(object) {
+    switch (object) {
+        case SubjectAlternativeNameType.SUBJECT_ALTERNATIVE_NAME_TYPE_UNSPECIFIED:
+            return "SUBJECT_ALTERNATIVE_NAME_TYPE_UNSPECIFIED";
+        case SubjectAlternativeNameType.EMAIL:
+            return "EMAIL";
+        case SubjectAlternativeNameType.URI:
+            return "URI";
+        case SubjectAlternativeNameType.OTHER_NAME:
+            return "OTHER_NAME";
+        default:
+            throw new globalThis.Error("Unrecognized enum value " + object + " for enum SubjectAlternativeNameType");
+    }
+}
+exports.HashOutput = {
+    fromJSON(object) {
+        return {
+            algorithm: isSet(object.algorithm) ? hashAlgorithmFromJSON(object.algorithm) : 0,
+            digest: isSet(object.digest) ? Buffer.from(bytesFromBase64(object.digest)) : Buffer.alloc(0),
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.algorithm !== 0) {
+            obj.algorithm = hashAlgorithmToJSON(message.algorithm);
+        }
+        if (message.digest.length !== 0) {
+            obj.digest = base64FromBytes(message.digest);
+        }
+        return obj;
+    },
+};
+exports.MessageSignature = {
+    fromJSON(object) {
+        return {
+            messageDigest: isSet(object.messageDigest) ? exports.HashOutput.fromJSON(object.messageDigest) : undefined,
+            signature: isSet(object.signature) ? Buffer.from(bytesFromBase64(object.signature)) : Buffer.alloc(0),
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.messageDigest !== undefined) {
+            obj.messageDigest = exports.HashOutput.toJSON(message.messageDigest);
+        }
+        if (message.signature.length !== 0) {
+            obj.signature = base64FromBytes(message.signature);
+        }
+        return obj;
+    },
+};
+exports.LogId = {
+    fromJSON(object) {
+        return { keyId: isSet(object.keyId) ? Buffer.from(bytesFromBase64(object.keyId)) : Buffer.alloc(0) };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.keyId.length !== 0) {
+            obj.keyId = base64FromBytes(message.keyId);
+        }
+        return obj;
+    },
+};
+exports.RFC3161SignedTimestamp = {
+    fromJSON(object) {
+        return {
+            signedTimestamp: isSet(object.signedTimestamp)
+                ? Buffer.from(bytesFromBase64(object.signedTimestamp))
+                : Buffer.alloc(0),
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.signedTimestamp.length !== 0) {
+            obj.signedTimestamp = base64FromBytes(message.signedTimestamp);
+        }
+        return obj;
+    },
+};
+exports.PublicKey = {
+    fromJSON(object) {
+        return {
+            rawBytes: isSet(object.rawBytes) ? Buffer.from(bytesFromBase64(object.rawBytes)) : undefined,
+            keyDetails: isSet(object.keyDetails) ? publicKeyDetailsFromJSON(object.keyDetails) : 0,
+            validFor: isSet(object.validFor) ? exports.TimeRange.fromJSON(object.validFor) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.rawBytes !== undefined) {
+            obj.rawBytes = base64FromBytes(message.rawBytes);
+        }
+        if (message.keyDetails !== 0) {
+            obj.keyDetails = publicKeyDetailsToJSON(message.keyDetails);
+        }
+        if (message.validFor !== undefined) {
+            obj.validFor = exports.TimeRange.toJSON(message.validFor);
+        }
+        return obj;
+    },
+};
+exports.PublicKeyIdentifier = {
+    fromJSON(object) {
+        return { hint: isSet(object.hint) ? globalThis.String(object.hint) : "" };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.hint !== "") {
+            obj.hint = message.hint;
+        }
+        return obj;
+    },
+};
+exports.ObjectIdentifier = {
+    fromJSON(object) {
+        return { id: globalThis.Array.isArray(object?.id) ? object.id.map((e) => globalThis.Number(e)) : [] };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.id?.length) {
+            obj.id = message.id.map((e) => Math.round(e));
+        }
+        return obj;
+    },
+};
+exports.ObjectIdentifierValuePair = {
+    fromJSON(object) {
+        return {
+            oid: isSet(object.oid) ? exports.ObjectIdentifier.fromJSON(object.oid) : undefined,
+            value: isSet(object.value) ? Buffer.from(bytesFromBase64(object.value)) : Buffer.alloc(0),
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.oid !== undefined) {
+            obj.oid = exports.ObjectIdentifier.toJSON(message.oid);
+        }
+        if (message.value.length !== 0) {
+            obj.value = base64FromBytes(message.value);
+        }
+        return obj;
+    },
+};
+exports.DistinguishedName = {
+    fromJSON(object) {
+        return {
+            organization: isSet(object.organization) ? globalThis.String(object.organization) : "",
+            commonName: isSet(object.commonName) ? globalThis.String(object.commonName) : "",
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.organization !== "") {
+            obj.organization = message.organization;
+        }
+        if (message.commonName !== "") {
+            obj.commonName = message.commonName;
+        }
+        return obj;
+    },
+};
+exports.X509Certificate = {
+    fromJSON(object) {
+        return { rawBytes: isSet(object.rawBytes) ? Buffer.from(bytesFromBase64(object.rawBytes)) : Buffer.alloc(0) };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.rawBytes.length !== 0) {
+            obj.rawBytes = base64FromBytes(message.rawBytes);
+        }
+        return obj;
+    },
+};
+exports.SubjectAlternativeName = {
+    fromJSON(object) {
+        return {
+            type: isSet(object.type) ? subjectAlternativeNameTypeFromJSON(object.type) : 0,
+            identity: isSet(object.regexp)
+                ? { $case: "regexp", regexp: globalThis.String(object.regexp) }
+                : isSet(object.value)
+                    ? { $case: "value", value: globalThis.String(object.value) }
+                    : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.type !== 0) {
+            obj.type = subjectAlternativeNameTypeToJSON(message.type);
+        }
+        if (message.identity?.$case === "regexp") {
+            obj.regexp = message.identity.regexp;
+        }
+        else if (message.identity?.$case === "value") {
+            obj.value = message.identity.value;
+        }
+        return obj;
+    },
+};
+exports.X509CertificateChain = {
+    fromJSON(object) {
+        return {
+            certificates: globalThis.Array.isArray(object?.certificates)
+                ? object.certificates.map((e) => exports.X509Certificate.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.certificates?.length) {
+            obj.certificates = message.certificates.map((e) => exports.X509Certificate.toJSON(e));
+        }
+        return obj;
+    },
+};
+exports.TimeRange = {
+    fromJSON(object) {
+        return {
+            start: isSet(object.start) ? fromJsonTimestamp(object.start) : undefined,
+            end: isSet(object.end) ? fromJsonTimestamp(object.end) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.start !== undefined) {
+            obj.start = message.start.toISOString();
+        }
+        if (message.end !== undefined) {
+            obj.end = message.end.toISOString();
+        }
+        return obj;
+    },
+};
+function bytesFromBase64(b64) {
+    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+}
+function base64FromBytes(arr) {
+    return globalThis.Buffer.from(arr).toString("base64");
+}
+function fromTimestamp(t) {
+    let millis = (globalThis.Number(t.seconds) || 0) * 1_000;
+    millis += (t.nanos || 0) / 1_000_000;
+    return new globalThis.Date(millis);
+}
+function fromJsonTimestamp(o) {
+    if (o instanceof globalThis.Date) {
+        return o;
+    }
+    else if (typeof o === "string") {
+        return new globalThis.Date(o);
+    }
+    else {
+        return fromTimestamp(timestamp_1.Timestamp.fromJSON(o));
+    }
+}
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 5204:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: sigstore_rekor.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TransparencyLogEntry = exports.InclusionPromise = exports.InclusionProof = exports.Checkpoint = exports.KindVersion = void 0;
+/* eslint-disable */
+const sigstore_common_1 = __nccwpck_require__(5334);
+exports.KindVersion = {
+    fromJSON(object) {
+        return {
+            kind: isSet(object.kind) ? globalThis.String(object.kind) : "",
+            version: isSet(object.version) ? globalThis.String(object.version) : "",
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.kind !== "") {
+            obj.kind = message.kind;
+        }
+        if (message.version !== "") {
+            obj.version = message.version;
+        }
+        return obj;
+    },
+};
+exports.Checkpoint = {
+    fromJSON(object) {
+        return { envelope: isSet(object.envelope) ? globalThis.String(object.envelope) : "" };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.envelope !== "") {
+            obj.envelope = message.envelope;
+        }
+        return obj;
+    },
+};
+exports.InclusionProof = {
+    fromJSON(object) {
+        return {
+            logIndex: isSet(object.logIndex) ? globalThis.String(object.logIndex) : "0",
+            rootHash: isSet(object.rootHash) ? Buffer.from(bytesFromBase64(object.rootHash)) : Buffer.alloc(0),
+            treeSize: isSet(object.treeSize) ? globalThis.String(object.treeSize) : "0",
+            hashes: globalThis.Array.isArray(object?.hashes)
+                ? object.hashes.map((e) => Buffer.from(bytesFromBase64(e)))
+                : [],
+            checkpoint: isSet(object.checkpoint) ? exports.Checkpoint.fromJSON(object.checkpoint) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.logIndex !== "0") {
+            obj.logIndex = message.logIndex;
+        }
+        if (message.rootHash.length !== 0) {
+            obj.rootHash = base64FromBytes(message.rootHash);
+        }
+        if (message.treeSize !== "0") {
+            obj.treeSize = message.treeSize;
+        }
+        if (message.hashes?.length) {
+            obj.hashes = message.hashes.map((e) => base64FromBytes(e));
+        }
+        if (message.checkpoint !== undefined) {
+            obj.checkpoint = exports.Checkpoint.toJSON(message.checkpoint);
+        }
+        return obj;
+    },
+};
+exports.InclusionPromise = {
+    fromJSON(object) {
+        return {
+            signedEntryTimestamp: isSet(object.signedEntryTimestamp)
+                ? Buffer.from(bytesFromBase64(object.signedEntryTimestamp))
+                : Buffer.alloc(0),
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.signedEntryTimestamp.length !== 0) {
+            obj.signedEntryTimestamp = base64FromBytes(message.signedEntryTimestamp);
+        }
+        return obj;
+    },
+};
+exports.TransparencyLogEntry = {
+    fromJSON(object) {
+        return {
+            logIndex: isSet(object.logIndex) ? globalThis.String(object.logIndex) : "0",
+            logId: isSet(object.logId) ? sigstore_common_1.LogId.fromJSON(object.logId) : undefined,
+            kindVersion: isSet(object.kindVersion) ? exports.KindVersion.fromJSON(object.kindVersion) : undefined,
+            integratedTime: isSet(object.integratedTime) ? globalThis.String(object.integratedTime) : "0",
+            inclusionPromise: isSet(object.inclusionPromise) ? exports.InclusionPromise.fromJSON(object.inclusionPromise) : undefined,
+            inclusionProof: isSet(object.inclusionProof) ? exports.InclusionProof.fromJSON(object.inclusionProof) : undefined,
+            canonicalizedBody: isSet(object.canonicalizedBody)
+                ? Buffer.from(bytesFromBase64(object.canonicalizedBody))
+                : Buffer.alloc(0),
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.logIndex !== "0") {
+            obj.logIndex = message.logIndex;
+        }
+        if (message.logId !== undefined) {
+            obj.logId = sigstore_common_1.LogId.toJSON(message.logId);
+        }
+        if (message.kindVersion !== undefined) {
+            obj.kindVersion = exports.KindVersion.toJSON(message.kindVersion);
+        }
+        if (message.integratedTime !== "0") {
+            obj.integratedTime = message.integratedTime;
+        }
+        if (message.inclusionPromise !== undefined) {
+            obj.inclusionPromise = exports.InclusionPromise.toJSON(message.inclusionPromise);
+        }
+        if (message.inclusionProof !== undefined) {
+            obj.inclusionProof = exports.InclusionProof.toJSON(message.inclusionProof);
+        }
+        if (message.canonicalizedBody.length !== 0) {
+            obj.canonicalizedBody = base64FromBytes(message.canonicalizedBody);
+        }
+        return obj;
+    },
+};
+function bytesFromBase64(b64) {
+    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+}
+function base64FromBytes(arr) {
+    return globalThis.Buffer.from(arr).toString("base64");
+}
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 1997:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: sigstore_trustroot.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ClientTrustConfig = exports.ServiceConfiguration = exports.Service = exports.SigningConfig = exports.TrustedRoot = exports.CertificateAuthority = exports.TransparencyLogInstance = exports.ServiceSelector = void 0;
+exports.serviceSelectorFromJSON = serviceSelectorFromJSON;
+exports.serviceSelectorToJSON = serviceSelectorToJSON;
+/* eslint-disable */
+const sigstore_common_1 = __nccwpck_require__(5334);
+/**
+ * ServiceSelector specifies how a client SHOULD select a set of
+ * Services to connect to. A client SHOULD throw an error if
+ * the value is SERVICE_SELECTOR_UNDEFINED.
+ */
+var ServiceSelector;
+(function (ServiceSelector) {
+    ServiceSelector[ServiceSelector["SERVICE_SELECTOR_UNDEFINED"] = 0] = "SERVICE_SELECTOR_UNDEFINED";
+    /**
+     * ALL - Clients SHOULD select all Services based on supported API version
+     * and validity window.
+     */
+    ServiceSelector[ServiceSelector["ALL"] = 1] = "ALL";
+    /**
+     * ANY - Clients SHOULD select one Service based on supported API version
+     * and validity window. It is up to the client implementation to
+     * decide how to select the Service, e.g. random or round-robin.
+     */
+    ServiceSelector[ServiceSelector["ANY"] = 2] = "ANY";
+    /**
+     * EXACT - Clients SHOULD select a specific number of Services based on
+     * supported API version and validity window, using the provided
+     * `count`. It is up to the client implementation to decide how to
+     * select the Service, e.g. random or round-robin.
+     */
+    ServiceSelector[ServiceSelector["EXACT"] = 3] = "EXACT";
+})(ServiceSelector || (exports.ServiceSelector = ServiceSelector = {}));
+function serviceSelectorFromJSON(object) {
+    switch (object) {
+        case 0:
+        case "SERVICE_SELECTOR_UNDEFINED":
+            return ServiceSelector.SERVICE_SELECTOR_UNDEFINED;
+        case 1:
+        case "ALL":
+            return ServiceSelector.ALL;
+        case 2:
+        case "ANY":
+            return ServiceSelector.ANY;
+        case 3:
+        case "EXACT":
+            return ServiceSelector.EXACT;
+        default:
+            throw new globalThis.Error("Unrecognized enum value " + object + " for enum ServiceSelector");
+    }
+}
+function serviceSelectorToJSON(object) {
+    switch (object) {
+        case ServiceSelector.SERVICE_SELECTOR_UNDEFINED:
+            return "SERVICE_SELECTOR_UNDEFINED";
+        case ServiceSelector.ALL:
+            return "ALL";
+        case ServiceSelector.ANY:
+            return "ANY";
+        case ServiceSelector.EXACT:
+            return "EXACT";
+        default:
+            throw new globalThis.Error("Unrecognized enum value " + object + " for enum ServiceSelector");
+    }
+}
+exports.TransparencyLogInstance = {
+    fromJSON(object) {
+        return {
+            baseUrl: isSet(object.baseUrl) ? globalThis.String(object.baseUrl) : "",
+            hashAlgorithm: isSet(object.hashAlgorithm) ? (0, sigstore_common_1.hashAlgorithmFromJSON)(object.hashAlgorithm) : 0,
+            publicKey: isSet(object.publicKey) ? sigstore_common_1.PublicKey.fromJSON(object.publicKey) : undefined,
+            logId: isSet(object.logId) ? sigstore_common_1.LogId.fromJSON(object.logId) : undefined,
+            checkpointKeyId: isSet(object.checkpointKeyId) ? sigstore_common_1.LogId.fromJSON(object.checkpointKeyId) : undefined,
+            operator: isSet(object.operator) ? globalThis.String(object.operator) : "",
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.baseUrl !== "") {
+            obj.baseUrl = message.baseUrl;
+        }
+        if (message.hashAlgorithm !== 0) {
+            obj.hashAlgorithm = (0, sigstore_common_1.hashAlgorithmToJSON)(message.hashAlgorithm);
+        }
+        if (message.publicKey !== undefined) {
+            obj.publicKey = sigstore_common_1.PublicKey.toJSON(message.publicKey);
+        }
+        if (message.logId !== undefined) {
+            obj.logId = sigstore_common_1.LogId.toJSON(message.logId);
+        }
+        if (message.checkpointKeyId !== undefined) {
+            obj.checkpointKeyId = sigstore_common_1.LogId.toJSON(message.checkpointKeyId);
+        }
+        if (message.operator !== "") {
+            obj.operator = message.operator;
+        }
+        return obj;
+    },
+};
+exports.CertificateAuthority = {
+    fromJSON(object) {
+        return {
+            subject: isSet(object.subject) ? sigstore_common_1.DistinguishedName.fromJSON(object.subject) : undefined,
+            uri: isSet(object.uri) ? globalThis.String(object.uri) : "",
+            certChain: isSet(object.certChain) ? sigstore_common_1.X509CertificateChain.fromJSON(object.certChain) : undefined,
+            validFor: isSet(object.validFor) ? sigstore_common_1.TimeRange.fromJSON(object.validFor) : undefined,
+            operator: isSet(object.operator) ? globalThis.String(object.operator) : "",
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.subject !== undefined) {
+            obj.subject = sigstore_common_1.DistinguishedName.toJSON(message.subject);
+        }
+        if (message.uri !== "") {
+            obj.uri = message.uri;
+        }
+        if (message.certChain !== undefined) {
+            obj.certChain = sigstore_common_1.X509CertificateChain.toJSON(message.certChain);
+        }
+        if (message.validFor !== undefined) {
+            obj.validFor = sigstore_common_1.TimeRange.toJSON(message.validFor);
+        }
+        if (message.operator !== "") {
+            obj.operator = message.operator;
+        }
+        return obj;
+    },
+};
+exports.TrustedRoot = {
+    fromJSON(object) {
+        return {
+            mediaType: isSet(object.mediaType) ? globalThis.String(object.mediaType) : "",
+            tlogs: globalThis.Array.isArray(object?.tlogs)
+                ? object.tlogs.map((e) => exports.TransparencyLogInstance.fromJSON(e))
+                : [],
+            certificateAuthorities: globalThis.Array.isArray(object?.certificateAuthorities)
+                ? object.certificateAuthorities.map((e) => exports.CertificateAuthority.fromJSON(e))
+                : [],
+            ctlogs: globalThis.Array.isArray(object?.ctlogs)
+                ? object.ctlogs.map((e) => exports.TransparencyLogInstance.fromJSON(e))
+                : [],
+            timestampAuthorities: globalThis.Array.isArray(object?.timestampAuthorities)
+                ? object.timestampAuthorities.map((e) => exports.CertificateAuthority.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.mediaType !== "") {
+            obj.mediaType = message.mediaType;
+        }
+        if (message.tlogs?.length) {
+            obj.tlogs = message.tlogs.map((e) => exports.TransparencyLogInstance.toJSON(e));
+        }
+        if (message.certificateAuthorities?.length) {
+            obj.certificateAuthorities = message.certificateAuthorities.map((e) => exports.CertificateAuthority.toJSON(e));
+        }
+        if (message.ctlogs?.length) {
+            obj.ctlogs = message.ctlogs.map((e) => exports.TransparencyLogInstance.toJSON(e));
+        }
+        if (message.timestampAuthorities?.length) {
+            obj.timestampAuthorities = message.timestampAuthorities.map((e) => exports.CertificateAuthority.toJSON(e));
+        }
+        return obj;
+    },
+};
+exports.SigningConfig = {
+    fromJSON(object) {
+        return {
+            mediaType: isSet(object.mediaType) ? globalThis.String(object.mediaType) : "",
+            caUrls: globalThis.Array.isArray(object?.caUrls) ? object.caUrls.map((e) => exports.Service.fromJSON(e)) : [],
+            oidcUrls: globalThis.Array.isArray(object?.oidcUrls) ? object.oidcUrls.map((e) => exports.Service.fromJSON(e)) : [],
+            rekorTlogUrls: globalThis.Array.isArray(object?.rekorTlogUrls)
+                ? object.rekorTlogUrls.map((e) => exports.Service.fromJSON(e))
+                : [],
+            rekorTlogConfig: isSet(object.rekorTlogConfig)
+                ? exports.ServiceConfiguration.fromJSON(object.rekorTlogConfig)
+                : undefined,
+            tsaUrls: globalThis.Array.isArray(object?.tsaUrls) ? object.tsaUrls.map((e) => exports.Service.fromJSON(e)) : [],
+            tsaConfig: isSet(object.tsaConfig) ? exports.ServiceConfiguration.fromJSON(object.tsaConfig) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.mediaType !== "") {
+            obj.mediaType = message.mediaType;
+        }
+        if (message.caUrls?.length) {
+            obj.caUrls = message.caUrls.map((e) => exports.Service.toJSON(e));
+        }
+        if (message.oidcUrls?.length) {
+            obj.oidcUrls = message.oidcUrls.map((e) => exports.Service.toJSON(e));
+        }
+        if (message.rekorTlogUrls?.length) {
+            obj.rekorTlogUrls = message.rekorTlogUrls.map((e) => exports.Service.toJSON(e));
+        }
+        if (message.rekorTlogConfig !== undefined) {
+            obj.rekorTlogConfig = exports.ServiceConfiguration.toJSON(message.rekorTlogConfig);
+        }
+        if (message.tsaUrls?.length) {
+            obj.tsaUrls = message.tsaUrls.map((e) => exports.Service.toJSON(e));
+        }
+        if (message.tsaConfig !== undefined) {
+            obj.tsaConfig = exports.ServiceConfiguration.toJSON(message.tsaConfig);
+        }
+        return obj;
+    },
+};
+exports.Service = {
+    fromJSON(object) {
+        return {
+            url: isSet(object.url) ? globalThis.String(object.url) : "",
+            majorApiVersion: isSet(object.majorApiVersion) ? globalThis.Number(object.majorApiVersion) : 0,
+            validFor: isSet(object.validFor) ? sigstore_common_1.TimeRange.fromJSON(object.validFor) : undefined,
+            operator: isSet(object.operator) ? globalThis.String(object.operator) : "",
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.url !== "") {
+            obj.url = message.url;
+        }
+        if (message.majorApiVersion !== 0) {
+            obj.majorApiVersion = Math.round(message.majorApiVersion);
+        }
+        if (message.validFor !== undefined) {
+            obj.validFor = sigstore_common_1.TimeRange.toJSON(message.validFor);
+        }
+        if (message.operator !== "") {
+            obj.operator = message.operator;
+        }
+        return obj;
+    },
+};
+exports.ServiceConfiguration = {
+    fromJSON(object) {
+        return {
+            selector: isSet(object.selector) ? serviceSelectorFromJSON(object.selector) : 0,
+            count: isSet(object.count) ? globalThis.Number(object.count) : 0,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.selector !== 0) {
+            obj.selector = serviceSelectorToJSON(message.selector);
+        }
+        if (message.count !== 0) {
+            obj.count = Math.round(message.count);
+        }
+        return obj;
+    },
+};
+exports.ClientTrustConfig = {
+    fromJSON(object) {
+        return {
+            mediaType: isSet(object.mediaType) ? globalThis.String(object.mediaType) : "",
+            trustedRoot: isSet(object.trustedRoot) ? exports.TrustedRoot.fromJSON(object.trustedRoot) : undefined,
+            signingConfig: isSet(object.signingConfig) ? exports.SigningConfig.fromJSON(object.signingConfig) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.mediaType !== "") {
+            obj.mediaType = message.mediaType;
+        }
+        if (message.trustedRoot !== undefined) {
+            obj.trustedRoot = exports.TrustedRoot.toJSON(message.trustedRoot);
+        }
+        if (message.signingConfig !== undefined) {
+            obj.signingConfig = exports.SigningConfig.toJSON(message.signingConfig);
+        }
+        return obj;
+    },
+};
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 9732:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// Code generated by protoc-gen-ts_proto. DO NOT EDIT.
+// versions:
+//   protoc-gen-ts_proto  v2.12.0
+//   protoc               v7.35.1
+// source: sigstore_verification.proto
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Input = exports.Artifact = exports.ArtifactVerificationOptions_ObserverTimestampOptions = exports.ArtifactVerificationOptions_TlogIntegratedTimestampOptions = exports.ArtifactVerificationOptions_TimestampAuthorityOptions = exports.ArtifactVerificationOptions_CtlogOptions = exports.ArtifactVerificationOptions_TlogOptions = exports.ArtifactVerificationOptions = exports.PublicKeyIdentities = exports.CertificateIdentities = exports.CertificateIdentity = void 0;
+/* eslint-disable */
+const sigstore_bundle_1 = __nccwpck_require__(715);
+const sigstore_common_1 = __nccwpck_require__(5334);
+const sigstore_trustroot_1 = __nccwpck_require__(1997);
+exports.CertificateIdentity = {
+    fromJSON(object) {
+        return {
+            issuer: isSet(object.issuer) ? globalThis.String(object.issuer) : "",
+            san: isSet(object.san) ? sigstore_common_1.SubjectAlternativeName.fromJSON(object.san) : undefined,
+            oids: globalThis.Array.isArray(object?.oids)
+                ? object.oids.map((e) => sigstore_common_1.ObjectIdentifierValuePair.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.issuer !== "") {
+            obj.issuer = message.issuer;
+        }
+        if (message.san !== undefined) {
+            obj.san = sigstore_common_1.SubjectAlternativeName.toJSON(message.san);
+        }
+        if (message.oids?.length) {
+            obj.oids = message.oids.map((e) => sigstore_common_1.ObjectIdentifierValuePair.toJSON(e));
+        }
+        return obj;
+    },
+};
+exports.CertificateIdentities = {
+    fromJSON(object) {
+        return {
+            identities: globalThis.Array.isArray(object?.identities)
+                ? object.identities.map((e) => exports.CertificateIdentity.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.identities?.length) {
+            obj.identities = message.identities.map((e) => exports.CertificateIdentity.toJSON(e));
+        }
+        return obj;
+    },
+};
+exports.PublicKeyIdentities = {
+    fromJSON(object) {
+        return {
+            publicKeys: globalThis.Array.isArray(object?.publicKeys)
+                ? object.publicKeys.map((e) => sigstore_common_1.PublicKey.fromJSON(e))
+                : [],
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.publicKeys?.length) {
+            obj.publicKeys = message.publicKeys.map((e) => sigstore_common_1.PublicKey.toJSON(e));
+        }
+        return obj;
+    },
+};
+exports.ArtifactVerificationOptions = {
+    fromJSON(object) {
+        return {
+            signers: isSet(object.certificateIdentities)
+                ? {
+                    $case: "certificateIdentities",
+                    certificateIdentities: exports.CertificateIdentities.fromJSON(object.certificateIdentities),
+                }
+                : isSet(object.publicKeys)
+                    ? { $case: "publicKeys", publicKeys: exports.PublicKeyIdentities.fromJSON(object.publicKeys) }
+                    : undefined,
+            tlogOptions: isSet(object.tlogOptions)
+                ? exports.ArtifactVerificationOptions_TlogOptions.fromJSON(object.tlogOptions)
+                : undefined,
+            ctlogOptions: isSet(object.ctlogOptions)
+                ? exports.ArtifactVerificationOptions_CtlogOptions.fromJSON(object.ctlogOptions)
+                : undefined,
+            tsaOptions: isSet(object.tsaOptions)
+                ? exports.ArtifactVerificationOptions_TimestampAuthorityOptions.fromJSON(object.tsaOptions)
+                : undefined,
+            integratedTsOptions: isSet(object.integratedTsOptions)
+                ? exports.ArtifactVerificationOptions_TlogIntegratedTimestampOptions.fromJSON(object.integratedTsOptions)
+                : undefined,
+            observerOptions: isSet(object.observerOptions)
+                ? exports.ArtifactVerificationOptions_ObserverTimestampOptions.fromJSON(object.observerOptions)
+                : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.signers?.$case === "certificateIdentities") {
+            obj.certificateIdentities = exports.CertificateIdentities.toJSON(message.signers.certificateIdentities);
+        }
+        else if (message.signers?.$case === "publicKeys") {
+            obj.publicKeys = exports.PublicKeyIdentities.toJSON(message.signers.publicKeys);
+        }
+        if (message.tlogOptions !== undefined) {
+            obj.tlogOptions = exports.ArtifactVerificationOptions_TlogOptions.toJSON(message.tlogOptions);
+        }
+        if (message.ctlogOptions !== undefined) {
+            obj.ctlogOptions = exports.ArtifactVerificationOptions_CtlogOptions.toJSON(message.ctlogOptions);
+        }
+        if (message.tsaOptions !== undefined) {
+            obj.tsaOptions = exports.ArtifactVerificationOptions_TimestampAuthorityOptions.toJSON(message.tsaOptions);
+        }
+        if (message.integratedTsOptions !== undefined) {
+            obj.integratedTsOptions = exports.ArtifactVerificationOptions_TlogIntegratedTimestampOptions.toJSON(message.integratedTsOptions);
+        }
+        if (message.observerOptions !== undefined) {
+            obj.observerOptions = exports.ArtifactVerificationOptions_ObserverTimestampOptions.toJSON(message.observerOptions);
+        }
+        return obj;
+    },
+};
+exports.ArtifactVerificationOptions_TlogOptions = {
+    fromJSON(object) {
+        return {
+            threshold: isSet(object.threshold) ? globalThis.Number(object.threshold) : 0,
+            performOnlineVerification: isSet(object.performOnlineVerification)
+                ? globalThis.Boolean(object.performOnlineVerification)
+                : false,
+            disable: isSet(object.disable) ? globalThis.Boolean(object.disable) : false,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.threshold !== 0) {
+            obj.threshold = Math.round(message.threshold);
+        }
+        if (message.performOnlineVerification !== false) {
+            obj.performOnlineVerification = message.performOnlineVerification;
+        }
+        if (message.disable !== false) {
+            obj.disable = message.disable;
+        }
+        return obj;
+    },
+};
+exports.ArtifactVerificationOptions_CtlogOptions = {
+    fromJSON(object) {
+        return {
+            threshold: isSet(object.threshold) ? globalThis.Number(object.threshold) : 0,
+            disable: isSet(object.disable) ? globalThis.Boolean(object.disable) : false,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.threshold !== 0) {
+            obj.threshold = Math.round(message.threshold);
+        }
+        if (message.disable !== false) {
+            obj.disable = message.disable;
+        }
+        return obj;
+    },
+};
+exports.ArtifactVerificationOptions_TimestampAuthorityOptions = {
+    fromJSON(object) {
+        return {
+            threshold: isSet(object.threshold) ? globalThis.Number(object.threshold) : 0,
+            disable: isSet(object.disable) ? globalThis.Boolean(object.disable) : false,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.threshold !== 0) {
+            obj.threshold = Math.round(message.threshold);
+        }
+        if (message.disable !== false) {
+            obj.disable = message.disable;
+        }
+        return obj;
+    },
+};
+exports.ArtifactVerificationOptions_TlogIntegratedTimestampOptions = {
+    fromJSON(object) {
+        return {
+            threshold: isSet(object.threshold) ? globalThis.Number(object.threshold) : 0,
+            disable: isSet(object.disable) ? globalThis.Boolean(object.disable) : false,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.threshold !== 0) {
+            obj.threshold = Math.round(message.threshold);
+        }
+        if (message.disable !== false) {
+            obj.disable = message.disable;
+        }
+        return obj;
+    },
+};
+exports.ArtifactVerificationOptions_ObserverTimestampOptions = {
+    fromJSON(object) {
+        return {
+            threshold: isSet(object.threshold) ? globalThis.Number(object.threshold) : 0,
+            disable: isSet(object.disable) ? globalThis.Boolean(object.disable) : false,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.threshold !== 0) {
+            obj.threshold = Math.round(message.threshold);
+        }
+        if (message.disable !== false) {
+            obj.disable = message.disable;
+        }
+        return obj;
+    },
+};
+exports.Artifact = {
+    fromJSON(object) {
+        return {
+            data: isSet(object.artifactUri)
+                ? { $case: "artifactUri", artifactUri: globalThis.String(object.artifactUri) }
+                : isSet(object.artifact)
+                    ? { $case: "artifact", artifact: Buffer.from(bytesFromBase64(object.artifact)) }
+                    : isSet(object.artifactDigest)
+                        ? { $case: "artifactDigest", artifactDigest: sigstore_common_1.HashOutput.fromJSON(object.artifactDigest) }
+                        : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.data?.$case === "artifactUri") {
+            obj.artifactUri = message.data.artifactUri;
+        }
+        else if (message.data?.$case === "artifact") {
+            obj.artifact = base64FromBytes(message.data.artifact);
+        }
+        else if (message.data?.$case === "artifactDigest") {
+            obj.artifactDigest = sigstore_common_1.HashOutput.toJSON(message.data.artifactDigest);
+        }
+        return obj;
+    },
+};
+exports.Input = {
+    fromJSON(object) {
+        return {
+            artifactTrustRoot: isSet(object.artifactTrustRoot) ? sigstore_trustroot_1.TrustedRoot.fromJSON(object.artifactTrustRoot) : undefined,
+            artifactVerificationOptions: isSet(object.artifactVerificationOptions)
+                ? exports.ArtifactVerificationOptions.fromJSON(object.artifactVerificationOptions)
+                : undefined,
+            bundle: isSet(object.bundle) ? sigstore_bundle_1.Bundle.fromJSON(object.bundle) : undefined,
+            artifact: isSet(object.artifact) ? exports.Artifact.fromJSON(object.artifact) : undefined,
+        };
+    },
+    toJSON(message) {
+        const obj = {};
+        if (message.artifactTrustRoot !== undefined) {
+            obj.artifactTrustRoot = sigstore_trustroot_1.TrustedRoot.toJSON(message.artifactTrustRoot);
+        }
+        if (message.artifactVerificationOptions !== undefined) {
+            obj.artifactVerificationOptions = exports.ArtifactVerificationOptions.toJSON(message.artifactVerificationOptions);
+        }
+        if (message.bundle !== undefined) {
+            obj.bundle = sigstore_bundle_1.Bundle.toJSON(message.bundle);
+        }
+        if (message.artifact !== undefined) {
+            obj.artifact = exports.Artifact.toJSON(message.artifact);
+        }
+        return obj;
+    },
+};
+function bytesFromBase64(b64) {
+    return Uint8Array.from(globalThis.Buffer.from(b64, "base64"));
+}
+function base64FromBytes(arr) {
+    return globalThis.Buffer.from(arr).toString("base64");
+}
+function isSet(value) {
+    return value !== null && value !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 9654:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+__exportStar(__nccwpck_require__(4649), exports);
+__exportStar(__nccwpck_require__(715), exports);
+__exportStar(__nccwpck_require__(5334), exports);
+__exportStar(__nccwpck_require__(5204), exports);
+__exportStar(__nccwpck_require__(1997), exports);
+__exportStar(__nccwpck_require__(9732), exports);
+
+
+/***/ }),
+
+/***/ 3835:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+/*
+Copyright 2025 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+__exportStar(__nccwpck_require__(6764), exports);
+__exportStar(__nccwpck_require__(381), exports);
+__exportStar(__nccwpck_require__(4969), exports);
+__exportStar(__nccwpck_require__(7543), exports);
+
+
+/***/ }),
+
+/***/ 8796:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.appDataPath = appDataPath;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const os_1 = __importDefault(__nccwpck_require__(857));
+const path_1 = __importDefault(__nccwpck_require__(6928));
+function appDataPath(name) {
+    const homedir = os_1.default.homedir();
+    switch (process.platform) {
+        /* istanbul ignore next */
+        case 'darwin': {
+            const appSupport = path_1.default.join(homedir, 'Library', 'Application Support');
+            return path_1.default.join(appSupport, name);
+        }
+        /* istanbul ignore next */
+        case 'win32': {
+            const localAppData = process.env.LOCALAPPDATA || path_1.default.join(homedir, 'AppData', 'Local');
+            return path_1.default.join(localAppData, name, 'Data');
+        }
+        /* istanbul ignore next */
+        default: {
+            const localData = process.env.XDG_DATA_HOME || path_1.default.join(homedir, '.local', 'share');
+            return path_1.default.join(localData, name);
+        }
+    }
+}
+
+
+/***/ }),
+
+/***/ 3040:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TUFClient = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const fs_1 = __importDefault(__nccwpck_require__(9896));
+const path_1 = __importDefault(__nccwpck_require__(6928));
+const tuf_js_1 = __nccwpck_require__(4706);
+const _1 = __nccwpck_require__(4423);
+const package_json_1 = __nccwpck_require__(9446);
+const target_1 = __nccwpck_require__(7686);
+const TARGETS_DIR_NAME = 'targets';
+class TUFClient {
+    updater;
+    constructor(options) {
+        const url = new URL(options.mirrorURL);
+        const repoName = encodeURIComponent(url.host + url.pathname.replace(/\/$/, ''));
+        const cachePath = path_1.default.join(options.cachePath, repoName);
+        initTufCache(cachePath);
+        seedCache({
+            cachePath,
+            mirrorURL: options.mirrorURL,
+            tufRootPath: options.rootPath,
+            forceInit: options.forceInit,
+        });
+        this.updater = initClient({
+            mirrorURL: options.mirrorURL,
+            cachePath,
+            forceCache: options.forceCache,
+            retry: options.retry,
+            timeout: options.timeout,
+        });
+    }
+    async refresh() {
+        return this.updater.refresh();
+    }
+    getTarget(targetName) {
+        return (0, target_1.readTarget)(this.updater, targetName);
+    }
+}
+exports.TUFClient = TUFClient;
+// Initializes the TUF cache directory structure including the initial
+// root.json file. If the cache directory does not exist, it will be
+// created. If the targets directory does not exist, it will be created.
+// If the root.json file does not exist, it will be copied from the
+// rootPath argument.
+function initTufCache(cachePath) {
+    const targetsPath = path_1.default.join(cachePath, TARGETS_DIR_NAME);
+    if (!fs_1.default.existsSync(cachePath)) {
+        fs_1.default.mkdirSync(cachePath, { recursive: true });
+    }
+    /* istanbul ignore else */
+    if (!fs_1.default.existsSync(targetsPath)) {
+        fs_1.default.mkdirSync(targetsPath);
+    }
+}
+// Populates the TUF cache with the initial root.json file. If the root.json
+// file does not exist (or we're forcing re-initialization), copy it from either
+// the rootPath argument or from one of the repo seeds.
+function seedCache({ cachePath, mirrorURL, tufRootPath, forceInit, }) {
+    const cachedRootPath = path_1.default.join(cachePath, 'root.json');
+    // If the root.json file does not exist (or we're forcing re-initialization),
+    // populate it either from the supplied rootPath or from one of the repo seeds.
+    /* istanbul ignore else */
+    if (!fs_1.default.existsSync(cachedRootPath) || forceInit) {
+        if (tufRootPath) {
+            fs_1.default.copyFileSync(tufRootPath, cachedRootPath);
+        }
+        else {
+            const seeds = __nccwpck_require__(8032);
+            const repoSeed = seeds[mirrorURL];
+            if (!repoSeed) {
+                throw new _1.TUFError({
+                    code: 'TUF_INIT_CACHE_ERROR',
+                    message: `No root.json found for mirror: ${mirrorURL}`,
+                });
+            }
+            fs_1.default.writeFileSync(cachedRootPath, Buffer.from(repoSeed['root.json'], 'base64'));
+            // Copy any seed targets into the cache
+            Object.entries(repoSeed.targets).forEach(([targetName, target]) => {
+                fs_1.default.writeFileSync(path_1.default.join(cachePath, TARGETS_DIR_NAME, targetName), Buffer.from(target, 'base64'));
+            });
+        }
+    }
+}
+function initClient(options) {
+    const config = {
+        fetchTimeout: options.timeout,
+        fetchRetry: options.retry,
+        userAgent: `${encodeURIComponent(package_json_1.name)}/${package_json_1.version}`,
+    };
+    return new tuf_js_1.Updater({
+        metadataBaseUrl: options.mirrorURL,
+        targetBaseUrl: `${options.mirrorURL}/targets`,
+        metadataDir: options.cachePath,
+        targetDir: path_1.default.join(options.cachePath, TARGETS_DIR_NAME),
+        forceCache: options.forceCache,
+        config,
+    });
+}
+
+
+/***/ }),
+
+/***/ 6213:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TUFError = void 0;
+class TUFError extends Error {
+    code;
+    cause;
+    constructor({ code, message, cause, }) {
+        super(message);
+        this.code = code;
+        this.cause = cause;
+        this.name = this.constructor.name;
+    }
+}
+exports.TUFError = TUFError;
+
+
+/***/ }),
+
+/***/ 4423:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TUFError = exports.DEFAULT_MIRROR_URL = void 0;
+exports.getTrustedRoot = getTrustedRoot;
+exports.initTUF = initTUF;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const protobuf_specs_1 = __nccwpck_require__(9654);
+const appdata_1 = __nccwpck_require__(8796);
+const client_1 = __nccwpck_require__(3040);
+exports.DEFAULT_MIRROR_URL = 'https://tuf-repo-cdn.sigstore.dev';
+const DEFAULT_CACHE_DIR = 'sigstore-js';
+const DEFAULT_RETRY = { retries: 2 };
+const DEFAULT_TIMEOUT = 5000;
+const TRUSTED_ROOT_TARGET = 'trusted_root.json';
+async function getTrustedRoot(
+/* istanbul ignore next */
+options = {}) {
+    const client = createClient(options);
+    const trustedRoot = await client.getTarget(TRUSTED_ROOT_TARGET);
+    return protobuf_specs_1.TrustedRoot.fromJSON(JSON.parse(trustedRoot));
+}
+async function initTUF(
+/* istanbul ignore next */
+options = {}) {
+    const client = createClient(options);
+    return client.refresh().then(() => client);
+}
+// Create a TUF client with default options
+function createClient(options) {
+    /* istanbul ignore next */
+    return new client_1.TUFClient({
+        cachePath: options.cachePath || (0, appdata_1.appDataPath)(DEFAULT_CACHE_DIR),
+        rootPath: options.rootPath,
+        mirrorURL: options.mirrorURL || exports.DEFAULT_MIRROR_URL,
+        retry: options.retry ?? DEFAULT_RETRY,
+        timeout: options.timeout ?? DEFAULT_TIMEOUT,
+        forceCache: options.forceCache ?? false,
+        forceInit: options.forceInit ?? options.force ?? false,
+    });
+}
+var error_1 = __nccwpck_require__(6213);
+Object.defineProperty(exports, "TUFError", ({ enumerable: true, get: function () { return error_1.TUFError; } }));
+
+
+/***/ }),
+
+/***/ 7686:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.readTarget = readTarget;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const fs_1 = __importDefault(__nccwpck_require__(9896));
+const error_1 = __nccwpck_require__(6213);
+// Downloads and returns the specified target from the provided TUF Updater.
+async function readTarget(tuf, targetPath) {
+    const path = await getTargetPath(tuf, targetPath);
+    return new Promise((resolve, reject) => {
+        fs_1.default.readFile(path, 'utf-8', (err, data) => {
+            if (err) {
+                reject(new error_1.TUFError({
+                    code: 'TUF_READ_TARGET_ERROR',
+                    message: `error reading target ${path}`,
+                    cause: err,
+                }));
+            }
+            else {
+                resolve(data);
+            }
+        });
+    });
+}
+// Returns the local path to the specified target. If the target is not yet
+// cached locally, the provided TUF Updater will be used to download and
+// cache the target.
+async function getTargetPath(tuf, target) {
+    let targetInfo;
+    try {
+        targetInfo = await tuf.getTargetInfo(target);
+    }
+    catch (err) {
+        throw new error_1.TUFError({
+            code: 'TUF_REFRESH_METADATA_ERROR',
+            message: 'error refreshing TUF metadata',
+            cause: err,
+        });
+    }
+    if (!targetInfo) {
+        throw new error_1.TUFError({
+            code: 'TUF_FIND_TARGET_ERROR',
+            message: `target ${target} not found`,
+        });
+    }
+    let path = await tuf.findCachedTarget(targetInfo);
+    // An empty path here means the target has not been cached locally, or is
+    // out of date. In either case, we need to download it.
+    if (!path) {
+        try {
+            path = await tuf.downloadTarget(targetInfo);
+        }
+        catch (err) {
+            throw new error_1.TUFError({
+                code: 'TUF_DOWNLOAD_TARGET_ERROR',
+                message: `error downloading target ${path}`,
+                cause: err,
+            });
+        }
+    }
+    return path;
+}
+
+
+/***/ }),
+
+/***/ 2635:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DSSESignatureContent = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const core_1 = __nccwpck_require__(3917);
+class DSSESignatureContent {
+    env;
+    constructor(env) {
+        this.env = env;
+    }
+    compareDigest(digest) {
+        return core_1.crypto.bufferEqual(digest, core_1.crypto.digest('sha256', this.env.payload));
+    }
+    // For a DSSE envelope the signature is computed over the pre-authentication
+    // encoding (PAE), so the digest of the signed bytes is the digest of the PAE.
+    // This is what a Rekor v2 hashedrekord entry records for a DSSE envelope.
+    compareSignedDigest(digest) {
+        return core_1.crypto.bufferEqual(digest, core_1.crypto.digest('sha256', this.preAuthEncoding));
+    }
+    compareSignature(signature) {
+        return core_1.crypto.bufferEqual(signature, this.signature);
+    }
+    verifySignature(key) {
+        return core_1.crypto.verify(this.preAuthEncoding, key, this.signature);
+    }
+    get signature() {
+        return this.env.signatures.length > 0
+            ? this.env.signatures[0].sig
+            : Buffer.from('');
+    }
+    // DSSE Pre-Authentication Encoding
+    get preAuthEncoding() {
+        return core_1.dsse.preAuthEncoding(this.env.payloadType, this.env.payload);
+    }
+}
+exports.DSSESignatureContent = DSSESignatureContent;
+
+
+/***/ }),
+
+/***/ 2544:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.toSignedEntity = toSignedEntity;
+exports.signatureContent = signatureContent;
+const core_1 = __nccwpck_require__(3917);
+const dsse_1 = __nccwpck_require__(2635);
+const message_1 = __nccwpck_require__(6531);
+function toSignedEntity(bundle, artifact) {
+    const { tlogEntries, timestampVerificationData } = bundle.verificationMaterial;
+    const timestamps = [];
+    for (const entry of tlogEntries) {
+        if (entry.integratedTime && entry.integratedTime !== '0') {
+            timestamps.push({
+                $case: 'transparency-log',
+                tlogEntry: entry,
+            });
+        }
+    }
+    for (const ts of timestampVerificationData?.rfc3161Timestamps ?? []) {
+        timestamps.push({
+            $case: 'timestamp-authority',
+            timestamp: core_1.RFC3161Timestamp.parse(Buffer.from(ts.signedTimestamp)),
+        });
+    }
+    return {
+        signature: signatureContent(bundle, artifact),
+        key: key(bundle),
+        tlogEntries,
+        timestamps,
+    };
+}
+function signatureContent(bundle, artifact) {
+    switch (bundle.content.$case) {
+        case 'dsseEnvelope':
+            return new dsse_1.DSSESignatureContent(bundle.content.dsseEnvelope);
+        case 'messageSignature':
+            return new message_1.MessageSignatureContent(bundle.content.messageSignature, artifact);
+    }
+}
+function key(bundle) {
+    switch (bundle.verificationMaterial.content.$case) {
+        case 'publicKey':
+            return {
+                $case: 'public-key',
+                hint: bundle.verificationMaterial.content.publicKey.hint,
+            };
+        case 'x509CertificateChain':
+            return {
+                $case: 'certificate',
+                certificate: core_1.X509Certificate.parse(Buffer.from(bundle.verificationMaterial.content.x509CertificateChain
+                    .certificates[0].rawBytes)),
+            };
+        case 'certificate':
+            return {
+                $case: 'certificate',
+                certificate: core_1.X509Certificate.parse(Buffer.from(bundle.verificationMaterial.content.certificate.rawBytes)),
+            };
+    }
+}
+
+
+/***/ }),
+
+/***/ 6531:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MessageSignatureContent = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const core_1 = __nccwpck_require__(3917);
+const protobuf_specs_1 = __nccwpck_require__(9654);
+// Map from the Sigstore protobuf HashAlgorithm enum to
+// the string values used by the Node.js crypto module.
+const HASH_ALGORITHM_MAP = {
+    [protobuf_specs_1.HashAlgorithm.HASH_ALGORITHM_UNSPECIFIED]: 'sha256',
+    [protobuf_specs_1.HashAlgorithm.SHA2_256]: 'sha256',
+    [protobuf_specs_1.HashAlgorithm.SHA2_384]: 'sha384',
+    [protobuf_specs_1.HashAlgorithm.SHA2_512]: 'sha512',
+    [protobuf_specs_1.HashAlgorithm.SHA3_256]: 'sha3-256',
+    [protobuf_specs_1.HashAlgorithm.SHA3_384]: 'sha3-384',
+};
+class MessageSignatureContent {
+    signature;
+    messageDigest;
+    artifact;
+    hashAlgorithm;
+    constructor(messageSignature, artifact) {
+        this.signature = messageSignature.signature;
+        this.messageDigest = messageSignature.messageDigest.digest;
+        this.artifact = artifact;
+        this.hashAlgorithm =
+            HASH_ALGORITHM_MAP[messageSignature.messageDigest.algorithm] ??
+                /* istanbul ignore next */ 'sha256';
+    }
+    compareSignature(signature) {
+        return core_1.crypto.bufferEqual(signature, this.signature);
+    }
+    compareDigest(digest) {
+        return core_1.crypto.bufferEqual(digest, this.messageDigest);
+    }
+    // For a message signature the signature is computed over the artifact, so the
+    // digest of the signed bytes is the artifact's message digest.
+    compareSignedDigest(digest) {
+        return this.compareDigest(digest);
+    }
+    verifySignature(key) {
+        return core_1.crypto.verify(this.artifact, key, this.signature, this.hashAlgorithm);
+    }
+}
+exports.MessageSignatureContent = MessageSignatureContent;
+
+
+/***/ }),
+
+/***/ 6849:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PolicyError = exports.VerificationError = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+class BaseError extends Error {
+    code;
+    cause; /* eslint-disable-line @typescript-eslint/no-explicit-any */
+    constructor({ code, message, cause, }) {
+        super(message);
+        this.code = code;
+        this.cause = cause;
+        this.name = this.constructor.name;
+    }
+}
+class VerificationError extends BaseError {
+}
+exports.VerificationError = VerificationError;
+class PolicyError extends BaseError {
+}
+exports.PolicyError = PolicyError;
+
+
+/***/ }),
+
+/***/ 4187:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+var __webpack_unused_export__;
+
+__webpack_unused_export__ = ({ value: true });
+exports.BL = exports.jO = __webpack_unused_export__ = __webpack_unused_export__ = exports.DC = void 0;
+/* istanbul ignore file */
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+var bundle_1 = __nccwpck_require__(2544);
+Object.defineProperty(exports, "DC", ({ enumerable: true, get: function () { return bundle_1.toSignedEntity; } }));
+var error_1 = __nccwpck_require__(6849);
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return error_1.PolicyError; } });
+__webpack_unused_export__ = ({ enumerable: true, get: function () { return error_1.VerificationError; } });
+var trust_1 = __nccwpck_require__(7822);
+Object.defineProperty(exports, "jO", ({ enumerable: true, get: function () { return trust_1.toTrustMaterial; } }));
+var verifier_1 = __nccwpck_require__(4433);
+Object.defineProperty(exports, "BL", ({ enumerable: true, get: function () { return verifier_1.Verifier; } }));
+
+
+/***/ }),
+
+/***/ 8412:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CertificateChainVerifier = void 0;
+exports.verifyCertificateChain = verifyCertificateChain;
+const error_1 = __nccwpck_require__(6849);
+const trust_1 = __nccwpck_require__(7822);
+function verifyCertificateChain(timestamp, leaf, certificateAuthorities) {
+    // Filter list of trusted CAs to those which are valid for the given
+    // timestamp
+    const cas = (0, trust_1.filterCertAuthorities)(certificateAuthorities, timestamp);
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+    let error;
+    for (const ca of cas) {
+        try {
+            const verifier = new CertificateChainVerifier({
+                trustedCerts: ca.certChain,
+                untrustedCert: leaf,
+                timestamp,
+            });
+            return verifier.verify();
+        }
+        catch (err) {
+            error = err;
+        }
+    }
+    // If we failed to verify the certificate chain for all of the trusted
+    // CAs, throw the last error we encountered.
+    throw new error_1.VerificationError({
+        code: 'CERTIFICATE_ERROR',
+        message: 'Failed to verify certificate chain',
+        cause: error,
+    });
+}
+class CertificateChainVerifier {
+    untrustedCert;
+    trustedCerts;
+    localCerts;
+    timestamp;
+    constructor(opts) {
+        this.untrustedCert = opts.untrustedCert;
+        this.trustedCerts = opts.trustedCerts;
+        this.localCerts = dedupeCertificates([
+            ...opts.trustedCerts,
+            opts.untrustedCert,
+        ]);
+        this.timestamp = opts.timestamp;
+    }
+    verify() {
+        // Construct certificate path from leaf to root
+        const certificatePath = this.sort();
+        // Perform validation checks on each certificate in the path
+        this.checkPath(certificatePath);
+        const validForDate = certificatePath.every((cert) => cert.validForDate(this.timestamp));
+        if (!validForDate) {
+            throw new error_1.VerificationError({
+                code: 'CERTIFICATE_ERROR',
+                message: 'certificate is not valid or expired at the specified date',
+            });
+        }
+        // Return verified certificate path
+        return certificatePath;
+    }
+    sort() {
+        const leafCert = this.untrustedCert;
+        // Construct all possible paths from the leaf
+        let paths = this.buildPaths(leafCert);
+        // Filter for paths which contain a trusted certificate
+        paths = paths.filter((path) => path.some((cert) => this.trustedCerts.includes(cert)));
+        if (paths.length === 0) {
+            throw new error_1.VerificationError({
+                code: 'CERTIFICATE_ERROR',
+                message: 'no trusted certificate path found',
+            });
+        }
+        // Find the shortest of possible paths
+        /* istanbul ignore next */
+        const path = paths.reduce((prev, curr) => prev.length < curr.length ? prev : curr);
+        // Construct chain from shortest path
+        // Removes the last certificate in the path, which will be a second copy
+        // of the root certificate given that the root is self-signed.
+        return [leafCert, ...path].slice(0, -1);
+    }
+    // Recursively build all possible paths from the leaf to the root
+    buildPaths(certificate) {
+        const paths = [];
+        const issuers = this.findIssuer(certificate);
+        if (issuers.length === 0) {
+            throw new error_1.VerificationError({
+                code: 'CERTIFICATE_ERROR',
+                message: 'no valid certificate path found',
+            });
+        }
+        for (let i = 0; i < issuers.length; i++) {
+            const issuer = issuers[i];
+            // Base case - issuer is self
+            if (issuer.equals(certificate)) {
+                paths.push([certificate]);
+                continue;
+            }
+            // Recursively build path for the issuer
+            const subPaths = this.buildPaths(issuer);
+            // Construct paths by appending the issuer to each subpath
+            for (let j = 0; j < subPaths.length; j++) {
+                paths.push([issuer, ...subPaths[j]]);
+            }
+        }
+        return paths;
+    }
+    // Return all possible issuers for the given certificate
+    findIssuer(certificate) {
+        let issuers = [];
+        let keyIdentifier;
+        // Exit early if the certificate is self-signed
+        if (certificate.subject.equals(certificate.issuer)) {
+            if (certificate.verify()) {
+                return [certificate];
+            }
+        }
+        // If the certificate has an authority key identifier, use that
+        // to find the issuer
+        if (certificate.extAuthorityKeyID) {
+            keyIdentifier = certificate.extAuthorityKeyID.keyIdentifier;
+            // TODO: Add support for authorityCertIssuer/authorityCertSerialNumber
+            // though Fulcio doesn't appear to use these
+        }
+        // Find possible issuers by comparing the authorityKeyID/subjectKeyID
+        // or issuer/subject. Potential issuers are added to the result array.
+        this.localCerts.forEach((possibleIssuer) => {
+            if (keyIdentifier) {
+                /* istanbul ignore else */
+                if (possibleIssuer.extSubjectKeyID) {
+                    if (possibleIssuer.extSubjectKeyID.keyIdentifier.equals(keyIdentifier)) {
+                        issuers.push(possibleIssuer);
+                    }
+                    return;
+                }
+            }
+            // Fallback to comparing certificate issuer and subject if
+            // subjectKey/authorityKey extensions are not present
+            if (possibleIssuer.subject.equals(certificate.issuer)) {
+                issuers.push(possibleIssuer);
+            }
+        });
+        // Remove any issuers which fail to verify the certificate
+        issuers = issuers.filter((issuer) => {
+            try {
+                return certificate.verify(issuer);
+            }
+            catch (ex) {
+                /* istanbul ignore next - should never error */
+                return false;
+            }
+        });
+        return issuers;
+    }
+    checkPath(path) {
+        /* istanbul ignore if */
+        if (path.length < 1) {
+            throw new error_1.VerificationError({
+                code: 'CERTIFICATE_ERROR',
+                message: 'certificate chain must contain at least one certificate',
+            });
+        }
+        // Ensure that all certificates beyond the leaf are CAs
+        const validCAs = path.slice(1).every((cert) => cert.isCA);
+        if (!validCAs) {
+            throw new error_1.VerificationError({
+                code: 'CERTIFICATE_ERROR',
+                message: 'intermediate certificate is not a CA',
+            });
+        }
+        // Certificate's issuer must match the subject of the next certificate
+        // in the chain
+        for (let i = path.length - 2; i >= 0; i--) {
+            /* istanbul ignore if */
+            if (!path[i].issuer.equals(path[i + 1].subject)) {
+                throw new error_1.VerificationError({
+                    code: 'CERTIFICATE_ERROR',
+                    message: 'incorrect certificate name chaining',
+                });
+            }
+        }
+        // Check pathlength constraints
+        for (let i = 0; i < path.length; i++) {
+            const cert = path[i];
+            // If the certificate is a CA, check the path length
+            if (cert.extBasicConstraints?.isCA) {
+                const pathLength = cert.extBasicConstraints.pathLenConstraint;
+                // The path length, if set, indicates how many intermediate
+                // certificates (NOT including the leaf) are allowed to follow. The
+                // pathLength constraint of any intermediate CA certificate MUST be
+                // greater than or equal to it's own depth in the chain (with an
+                // adjustment for the leaf certificate)
+                if (pathLength !== undefined && pathLength < i - 1) {
+                    throw new error_1.VerificationError({
+                        code: 'CERTIFICATE_ERROR',
+                        message: 'path length constraint exceeded',
+                    });
+                }
+            }
+        }
+    }
+}
+exports.CertificateChainVerifier = CertificateChainVerifier;
+// Remove duplicate certificates from the array
+function dedupeCertificates(certs) {
+    for (let i = 0; i < certs.length; i++) {
+        for (let j = i + 1; j < certs.length; j++) {
+            if (certs[i].equals(certs[j])) {
+                certs.splice(j, 1);
+                j--;
+            }
+        }
+    }
+    return certs;
+}
+
+
+/***/ }),
+
+/***/ 3771:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifyPublicKey = verifyPublicKey;
+exports.verifyCertificate = verifyCertificate;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const core_1 = __nccwpck_require__(3917);
+const error_1 = __nccwpck_require__(6849);
+const certificate_1 = __nccwpck_require__(8412);
+const sct_1 = __nccwpck_require__(1633);
+const OID_FULCIO_ISSUER_V1 = '1.3.6.1.4.1.57264.1.1';
+const OID_FULCIO_ISSUER_V2 = '1.3.6.1.4.1.57264.1.8';
+function verifyPublicKey(hint, timestamps, trustMaterial) {
+    const key = trustMaterial.publicKey(hint);
+    timestamps.forEach((timestamp) => {
+        if (!key.validFor(timestamp)) {
+            throw new error_1.VerificationError({
+                code: 'PUBLIC_KEY_ERROR',
+                message: `Public key is not valid for timestamp: ${timestamp.toISOString()}`,
+            });
+        }
+    });
+    return { key: key.publicKey };
+}
+function verifyCertificate(leaf, timestamps, trustMaterial) {
+    // Check that leaf certificate chains to a trusted CA
+    let path = [];
+    timestamps.forEach((timestamp) => {
+        path = (0, certificate_1.verifyCertificateChain)(timestamp, leaf, trustMaterial.certificateAuthorities);
+    });
+    return {
+        scts: (0, sct_1.verifySCTs)(path[0], path[1], trustMaterial.ctlogs),
+        signer: getSigner(path[0]),
+    };
+}
+function getSigner(cert) {
+    let issuer;
+    const issuerExtension = cert.extension(OID_FULCIO_ISSUER_V2);
+    /* istanbul ignore next */
+    if (issuerExtension) {
+        issuer = issuerExtension.valueObj.subs?.[0]?.value.toString('ascii');
+    }
+    else {
+        issuer = cert.extension(OID_FULCIO_ISSUER_V1)?.value.toString('ascii');
+    }
+    const oids = cert.extensions.map((ext) => {
+        const oid = ext.subs[0].toOID();
+        return {
+            oid: { id: oid.split('.').map(Number) },
+            value: ext.subs[ext.subs.length - 1].value,
+        };
+    });
+    const identity = {
+        extensions: { issuer },
+        subjectAlternativeName: cert.subjectAltName,
+        oids,
+    };
+    return {
+        key: core_1.crypto.createPublicKey(cert.publicKey),
+        identity,
+    };
+}
+
+
+/***/ }),
+
+/***/ 1633:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifySCTs = verifySCTs;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const core_1 = __nccwpck_require__(3917);
+const error_1 = __nccwpck_require__(6849);
+const trust_1 = __nccwpck_require__(7822);
+function verifySCTs(cert, issuer, ctlogs) {
+    let extSCT;
+    // Verifying the SCT requires that we remove the SCT extension and
+    // re-encode the TBS structure to DER -- this value is part of the data
+    // over which the signature is calculated. Since this is a destructive action
+    // we create a copy of the certificate so we can remove the SCT extension
+    // without affecting the original certificate.
+    const clone = cert.clone();
+    // Intentionally not using the findExtension method here because we want to
+    // remove the the SCT extension from the certificate before calculating the
+    // PreCert structure
+    for (let i = 0; i < clone.extensions.length; i++) {
+        const ext = clone.extensions[i];
+        if (ext.subs[0].toOID() === core_1.EXTENSION_OID_SCT) {
+            extSCT = new core_1.X509SCTExtension(ext);
+            // Remove the extension from the certificate
+            clone.extensions.splice(i, 1);
+            break;
+        }
+    }
+    // No SCT extension found to verify
+    if (!extSCT) {
+        return [];
+    }
+    // Found an SCT extension but it has no SCTs
+    /* istanbul ignore if -- too difficult to fabricate test case for this */
+    if (extSCT.signedCertificateTimestamps.length === 0) {
+        return [];
+    }
+    // Construct the PreCert structure
+    // https://www.rfc-editor.org/rfc/rfc6962#section-3.2
+    const preCert = new core_1.ByteStream();
+    // Calculate hash of the issuer's public key
+    const issuerId = core_1.crypto.digest('sha256', issuer.publicKey);
+    preCert.appendView(issuerId);
+    // Re-encodes the certificate to DER after removing the SCT extension
+    const tbs = clone.tbsCertificate.toDER();
+    preCert.appendUint24(tbs.length);
+    preCert.appendView(tbs);
+    // Calculate and return the verification results for each SCT
+    return extSCT.signedCertificateTimestamps.map((sct) => {
+        // Find the ctlog instance that corresponds to the SCT's logID
+        const validCTLogs = (0, trust_1.filterTLogAuthorities)(ctlogs, {
+            logID: sct.logID,
+            targetDate: sct.datetime,
+        });
+        // See if the SCT is valid for any of the CT logs
+        const verified = validCTLogs.some((log) => sct.verify(preCert.buffer, log.publicKey));
+        if (!verified) {
+            throw new error_1.VerificationError({
+                code: 'CERTIFICATE_ERROR',
+                message: 'SCT verification failed',
+            });
+        }
+        return sct.logID;
+    });
+}
+
+
+/***/ }),
+
+/***/ 8037:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifySubjectAlternativeName = verifySubjectAlternativeName;
+exports.verifyExtensions = verifyExtensions;
+exports.verifyOIDs = verifyOIDs;
+const error_1 = __nccwpck_require__(6849);
+// Verifies that the signer's SAN matches the policy identity. The
+// policyIdentity is treated as a JavaScript regular expression pattern and
+// tested against the full signerIdentity string. For exact matching, use
+// anchored patterns (e.g. '^user@example\\.com$').
+function verifySubjectAlternativeName(policyIdentity, signerIdentity) {
+    if (signerIdentity === undefined || !signerIdentity.match(policyIdentity)) {
+        throw new error_1.PolicyError({
+            code: 'UNTRUSTED_SIGNER_ERROR',
+            message: `certificate identity error - expected ${policyIdentity}, got ${signerIdentity}`,
+        });
+    }
+}
+function verifyExtensions(policyExtensions, signerExtensions = {}) {
+    let key;
+    for (key in policyExtensions) {
+        if (signerExtensions[key] !== policyExtensions[key]) {
+            throw new error_1.PolicyError({
+                code: 'UNTRUSTED_SIGNER_ERROR',
+                message: `invalid certificate extension - expected ${key}=${policyExtensions[key]}, got ${key}=${signerExtensions[key]}`,
+            });
+        }
+    }
+}
+function verifyOIDs(policyOIDs, signerOIDs = []) {
+    for (const policyOID of policyOIDs) {
+        const match = signerOIDs.find((signerOID) => oidEquals(policyOID.oid?.id, signerOID.oid?.id) &&
+            policyOID.value.equals(signerOID.value));
+        if (!match) {
+            const oid = policyOID.oid?.id.join('.') ?? '<unknown>';
+            throw new error_1.PolicyError({
+                code: 'UNTRUSTED_SIGNER_ERROR',
+                message: `invalid certificate extension - missing OID ${oid}`,
+            });
+        }
+    }
+}
+function oidEquals(a, b) {
+    if (a === undefined || b === undefined) {
+        return false;
+    }
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+
+/***/ }),
+
+/***/ 7968:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getTSATimestamp = getTSATimestamp;
+exports.getTLogTimestamp = getTLogTimestamp;
+const tsa_1 = __nccwpck_require__(4472);
+function getTSATimestamp(timestamp, data, timestampAuthorities) {
+    (0, tsa_1.verifyRFC3161Timestamp)(timestamp, data, timestampAuthorities);
+    return {
+        type: 'timestamp-authority',
+        logID: timestamp.signerSerialNumber,
+        timestamp: timestamp.signingTime,
+    };
+}
+function getTLogTimestamp(entry) {
+    // Only entries with an inclusion promise provide a verifiable timestamp
+    if (!entry.inclusionPromise) {
+        return undefined;
+    }
+    return {
+        type: 'transparency-log',
+        logID: entry.logId.keyId,
+        timestamp: new Date(Number(entry.integratedTime) * 1000),
+    };
+}
+
+
+/***/ }),
+
+/***/ 4472:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifyRFC3161Timestamp = verifyRFC3161Timestamp;
+const core_1 = __nccwpck_require__(3917);
+const error_1 = __nccwpck_require__(6849);
+const certificate_1 = __nccwpck_require__(8412);
+const trust_1 = __nccwpck_require__(7822);
+function verifyRFC3161Timestamp(timestamp, data, timestampAuthorities) {
+    const signingTime = timestamp.signingTime;
+    // Filter for CAs which were valid at the time of signing
+    timestampAuthorities = (0, trust_1.filterCertAuthorities)(timestampAuthorities, signingTime);
+    // Filter for CAs which match serial and issuer embedded in the timestamp
+    timestampAuthorities = filterCAsBySerialAndIssuer(timestampAuthorities, {
+        serialNumber: timestamp.signerSerialNumber,
+        issuer: timestamp.signerIssuer,
+    });
+    // Check that we can verify the timestamp with AT LEAST ONE of the remaining
+    // CAs
+    const verified = timestampAuthorities.some((ca) => {
+        try {
+            verifyTimestampForCA(timestamp, data, ca);
+            return true;
+        }
+        catch (e) {
+            return false;
+        }
+    });
+    if (!verified) {
+        throw new error_1.VerificationError({
+            code: 'TIMESTAMP_ERROR',
+            message: 'timestamp could not be verified',
+        });
+    }
+}
+function verifyTimestampForCA(timestamp, data, ca) {
+    const [leaf, ...cas] = ca.certChain;
+    const signingKey = core_1.crypto.createPublicKey(leaf.publicKey);
+    const signingTime = timestamp.signingTime;
+    // Verify the certificate chain for the provided CA
+    try {
+        new certificate_1.CertificateChainVerifier({
+            untrustedCert: leaf,
+            trustedCerts: cas,
+            timestamp: signingTime,
+        }).verify();
+    }
+    catch (e) {
+        throw new error_1.VerificationError({
+            code: 'TIMESTAMP_ERROR',
+            message: 'invalid certificate chain',
+        });
+    }
+    // Check that the signing certificate's key can be used to verify the
+    // timestamp signature.
+    timestamp.verify(data, signingKey);
+}
+// Filters the list of CAs to those which have a leaf signing certificate which
+// matches the given serial number and issuer.
+function filterCAsBySerialAndIssuer(timestampAuthorities, criteria) {
+    return timestampAuthorities.filter((ca) => ca.certChain.length > 0 &&
+        core_1.crypto.bufferEqual(ca.certChain[0].serialNumber, criteria.serialNumber) &&
+        core_1.crypto.bufferEqual(ca.certChain[0].issuer, criteria.issuer));
+}
+
+
+/***/ }),
+
+/***/ 9266:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.LogCheckpoint = void 0;
+exports.verifyCheckpoint = verifyCheckpoint;
+/*
+Copyright 2025 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const core_1 = __nccwpck_require__(3917);
+const error_1 = __nccwpck_require__(6849);
+// Separator between the note and the signatures in a checkpoint
+const CHECKPOINT_SEPARATOR = '\n\n';
+// Checkpoint signatures are of the following form:
+// "– <identity> <key_hint+signature_bytes>\n"
+// where:
+// - the prefix is an emdash (U+2014).
+// - <identity> gives a human-readable representation of the signing ID.
+// - <key_hint+signature_bytes> is the first 4 bytes of the SHA256 hash of the
+//   associated public key followed by the signature bytes.
+const SIGNATURE_REGEX = /\u2014 (\S+) (\S+)\n/g;
+// Verifies the checkpoint value in the given tlog entry. There are two steps
+// to the verification:
+// 1. Verify that all signatures in the checkpoint can be verified against a
+//    trusted public key
+// 2. Verify that the root hash in the checkpoint matches the root hash in the
+//    inclusion proof
+// See: https://github.com/transparency-dev/formats/blob/main/log/README.md
+function verifyCheckpoint(entry, tlogs) {
+    const inclusionProof = entry.inclusionProof;
+    const signedNote = SignedNote.fromString(inclusionProof.checkpoint.envelope);
+    const checkpoint = LogCheckpoint.fromString(signedNote.note);
+    // Verify that the signatures in the checkpoint are all valid
+    if (!verifySignedNote(signedNote, tlogs)) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_INCLUSION_PROOF_ERROR',
+            message: 'invalid checkpoint signature',
+        });
+    }
+    return checkpoint;
+}
+// Verifies the signatures in the SignedNote. For each signature, the
+// corresponding transparency log is looked up by the key hint and the
+// signature is verified against the public key in the transparency log.
+// Throws an error if any of the signatures are invalid.
+function verifySignedNote(signedNote, tlogs) {
+    const data = Buffer.from(signedNote.note, 'utf-8');
+    return signedNote.signatures.some((signature) => {
+        // Find the transparency log instance with the matching key hint
+        const tlog = tlogs.find((tlog) => core_1.crypto.bufferEqual(tlog.logID.subarray(0, 4), signature.keyHint) &&
+            // Match the signature name to the base URL of the tlog. The name is
+            // attacker-controlled, so it MUST be compared as a literal substring
+            // and never coerced into a RegExp (as String.prototype.match would).
+            tlog.baseURL.includes(signature.name));
+        if (!tlog) {
+            return false;
+        }
+        return core_1.crypto.verify(data, tlog.publicKey, signature.signature);
+    });
+}
+// SignedNote represents a signed note from a transparency log checkpoint. Consists
+// of a body (or note) and one more signatures calculated over the body. See
+// https://github.com/transparency-dev/formats/blob/main/log/README.md#signed-envelope
+class SignedNote {
+    note;
+    signatures;
+    constructor(note, signatures) {
+        this.note = note;
+        this.signatures = signatures;
+    }
+    // Deserialize a SignedNote from a string
+    static fromString(envelope) {
+        if (!envelope.includes(CHECKPOINT_SEPARATOR)) {
+            throw new error_1.VerificationError({
+                code: 'TLOG_INCLUSION_PROOF_ERROR',
+                message: 'missing checkpoint separator',
+            });
+        }
+        // Split the note into the header and the data portions at the separator
+        const split = envelope.indexOf(CHECKPOINT_SEPARATOR);
+        const header = envelope.slice(0, split + 1);
+        const data = envelope.slice(split + CHECKPOINT_SEPARATOR.length);
+        // Find all the signature lines in the data portion
+        const matches = data.matchAll(SIGNATURE_REGEX);
+        // Parse each of the matched signature lines into the name and signature.
+        // The first four bytes of the signature are the key hint (should match the
+        // first four bytes of the log ID), and the rest is the signature itself.
+        const signatures = Array.from(matches, (match) => {
+            const [, name, signature] = match;
+            const sigBytes = Buffer.from(signature, 'base64');
+            if (sigBytes.length < 5) {
+                throw new error_1.VerificationError({
+                    code: 'TLOG_INCLUSION_PROOF_ERROR',
+                    message: 'malformed checkpoint signature',
+                });
+            }
+            return {
+                name,
+                keyHint: sigBytes.subarray(0, 4),
+                signature: sigBytes.subarray(4),
+            };
+        });
+        if (signatures.length === 0) {
+            throw new error_1.VerificationError({
+                code: 'TLOG_INCLUSION_PROOF_ERROR',
+                message: 'no signatures found in checkpoint',
+            });
+        }
+        return new SignedNote(header, signatures);
+    }
+}
+// LogCheckpoint represents a transparency log checkpoint. Consists of the
+// following:
+//  - origin: the name of the transparency log
+//  - logSize: the size of the log at the time of the checkpoint
+//  - logHash: the root hash of the log at the time of the checkpoint
+//  - rest: the rest of the checkpoint body, which is a list of log entries
+// See:
+// https://github.com/transparency-dev/formats/blob/main/log/README.md#checkpoint-body
+class LogCheckpoint {
+    origin;
+    logSize;
+    logHash;
+    rest;
+    constructor(origin, logSize, logHash, rest) {
+        this.origin = origin;
+        this.logSize = logSize;
+        this.logHash = logHash;
+        this.rest = rest;
+    }
+    static fromString(note) {
+        const lines = note.trimEnd().split('\n');
+        if (lines.length < 3) {
+            throw new error_1.VerificationError({
+                code: 'TLOG_INCLUSION_PROOF_ERROR',
+                message: 'too few lines in checkpoint header',
+            });
+        }
+        const origin = lines[0];
+        // logSize is attacker-controlled and parsed before any signature is
+        // verified, so guard against BigInt() throwing an uncaught SyntaxError on
+        // malformed input.
+        let logSize;
+        try {
+            logSize = BigInt(lines[1]);
+        }
+        catch {
+            throw new error_1.VerificationError({
+                code: 'TLOG_INCLUSION_PROOF_ERROR',
+                message: 'invalid checkpoint log size',
+            });
+        }
+        const rootHash = Buffer.from(lines[2], 'base64');
+        const rest = lines.slice(3);
+        return new LogCheckpoint(origin, logSize, rootHash, rest);
+    }
+}
+exports.LogCheckpoint = LogCheckpoint;
+
+
+/***/ }),
+
+/***/ 7005:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DSSE_API_VERSION_V1 = void 0;
+exports.verifyDSSETLogBody = verifyDSSETLogBody;
+exports.verifyDSSETLogBodyV2 = verifyDSSETLogBodyV2;
+/*
+Copyright 2025 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const error_1 = __nccwpck_require__(6849);
+exports.DSSE_API_VERSION_V1 = '0.0.1';
+// Compare the given dsse tlog entry to the given bundle
+function verifyDSSETLogBody(tlogEntry, content) {
+    switch (tlogEntry.apiVersion) {
+        case exports.DSSE_API_VERSION_V1:
+            return verifyDSSE001TLogBody(tlogEntry, content);
+        default:
+            throw new error_1.VerificationError({
+                code: 'TLOG_BODY_ERROR',
+                message: `unsupported dsse version: ${tlogEntry.apiVersion}`,
+            });
+    }
+}
+// Compare the given dsse tlog entry to the given bundle. This function is
+// specifically for Rekor V2 entries.
+function verifyDSSETLogBodyV2(tlogEntry, content) {
+    const spec = tlogEntry.spec?.spec;
+    if (!spec) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: `missing dsse spec`,
+        });
+    }
+    switch (spec.$case) {
+        case 'dsseV002':
+            return verifyDSSE002TLogBody(spec.dsseV002, content);
+        default:
+            throw new error_1.VerificationError({
+                code: 'TLOG_BODY_ERROR',
+                message: `unsupported version: ${spec.$case}`,
+            });
+    }
+}
+// Compare the given dsse v0.0.1 tlog entry to the given DSSE envelope.
+function verifyDSSE001TLogBody(tlogEntry, content) {
+    // Ensure the bundle's DSSE only contains a single signature
+    if (tlogEntry.spec.signatures?.length !== 1) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'signature count mismatch',
+        });
+    }
+    const tlogSig = tlogEntry.spec.signatures[0].signature;
+    // Ensure that the signature in the bundle's DSSE matches tlog entry
+    if (!content.compareSignature(Buffer.from(tlogSig, 'base64')))
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'tlog entry signature mismatch',
+        });
+    // Ensure the digest of the bundle's DSSE payload matches the digest in the
+    // tlog entry
+    const tlogHash = tlogEntry.spec.payloadHash?.value || '';
+    if (!content.compareDigest(Buffer.from(tlogHash, 'hex'))) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'DSSE payload hash mismatch',
+        });
+    }
+}
+// Compare the given dsse v0.0.2 tlog entry to the given DSSE envelope.
+function verifyDSSE002TLogBody(spec, content) {
+    // Ensure the bundle's DSSE only contains a single signature
+    if (spec.signatures?.length !== 1) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'signature count mismatch',
+        });
+    }
+    const tlogSig = spec.signatures[0].content;
+    // Ensure that the signature in the bundle's DSSE matches tlog entry
+    if (!content.compareSignature(tlogSig))
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'tlog entry signature mismatch',
+        });
+    // Ensure the digest of the bundle's DSSE payload matches the digest in the
+    // tlog entry
+    const tlogHash = spec.payloadHash?.digest || Buffer.from('');
+    if (!content.compareDigest(tlogHash)) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'DSSE payload hash mismatch',
+        });
+    }
+}
+
+
+/***/ }),
+
+/***/ 1484:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HASHEDREKORD_API_VERSION_V1 = void 0;
+exports.verifyHashedRekordTLogBody = verifyHashedRekordTLogBody;
+exports.verifyHashedRekordTLogBodyV2 = verifyHashedRekordTLogBodyV2;
+/*
+Copyright 2025 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const error_1 = __nccwpck_require__(6849);
+exports.HASHEDREKORD_API_VERSION_V1 = '0.0.1';
+// Compare the given hashedrekord tlog entry to the given bundle
+function verifyHashedRekordTLogBody(tlogEntry, content) {
+    switch (tlogEntry.apiVersion) {
+        case exports.HASHEDREKORD_API_VERSION_V1:
+            return verifyHashedrekord001TLogBody(tlogEntry, content);
+        default:
+            throw new error_1.VerificationError({
+                code: 'TLOG_BODY_ERROR',
+                message: `unsupported hashedrekord version: ${tlogEntry.apiVersion}`,
+            });
+    }
+}
+// Compare the given hashedrekor tlog entry to the given bundle. This function is
+// specifically for Rekor V2 entries.
+function verifyHashedRekordTLogBodyV2(tlogEntry, content) {
+    const spec = tlogEntry.spec?.spec;
+    if (!spec) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: `missing dsse spec`,
+        });
+    }
+    switch (spec.$case) {
+        case 'hashedRekordV002':
+            return verifyHashedrekord002TLogBody(spec.hashedRekordV002, content);
+        default:
+            throw new error_1.VerificationError({
+                code: 'TLOG_BODY_ERROR',
+                message: `unsupported version: ${spec.$case}`,
+            });
+    }
+}
+// Compare the given hashedrekord v0.0.1 tlog entry to the given message
+// signature
+function verifyHashedrekord001TLogBody(tlogEntry, content) {
+    // Ensure that the bundles message signature matches the tlog entry
+    const tlogSig = tlogEntry.spec.signature.content || '';
+    if (!content.compareSignature(Buffer.from(tlogSig, 'base64'))) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'signature mismatch',
+        });
+    }
+    // Ensure that the bundle's signed digest matches the tlog entry
+    const tlogDigest = tlogEntry.spec.data.hash?.value || '';
+    if (!content.compareSignedDigest(Buffer.from(tlogDigest, 'hex'))) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'digest mismatch',
+        });
+    }
+}
+// Compare the given hashedrekord v0.0.2 tlog entry to the given message
+// signature
+function verifyHashedrekord002TLogBody(spec, content) {
+    // Ensure that the bundles message signature matches the tlog entry
+    const tlogSig = spec.signature?.content || Buffer.from('');
+    if (!content.compareSignature(tlogSig)) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'signature mismatch',
+        });
+    }
+    // Ensure that the bundle's signed digest matches the tlog entry
+    const tlogHash = spec.data?.digest || Buffer.from('');
+    if (!content.compareSignedDigest(tlogHash)) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'digest mismatch',
+        });
+    }
+}
+
+
+/***/ }),
+
+/***/ 8218:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifyTLogBody = verifyTLogBody;
+exports.verifyTLogInclusion = verifyTLogInclusion;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const v2_1 = __nccwpck_require__(3835);
+const error_1 = __nccwpck_require__(6849);
+const dsse_1 = __nccwpck_require__(7005);
+const hashedrekord_1 = __nccwpck_require__(1484);
+const intoto_1 = __nccwpck_require__(7703);
+const checkpoint_1 = __nccwpck_require__(9266);
+const merkle_1 = __nccwpck_require__(7046);
+const set_1 = __nccwpck_require__(333);
+// Verifies that the given tlog entry matches the supplied signature content.
+function verifyTLogBody(entry, sigContent) {
+    const { kind, version } = entry.kindVersion;
+    // The canonicalized body is attacker-controlled; parse defensively so
+    // malformed JSON yields a VerificationError rather than an uncaught
+    // SyntaxError.
+    let body;
+    try {
+        body = JSON.parse(entry.canonicalizedBody.toString('utf8'));
+    }
+    catch {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'invalid canonicalized body',
+        });
+    }
+    // validate body
+    if (kind !== body.kind || version !== body.apiVersion) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: `kind/version mismatch - expected: ${kind}/${version}, received: ${body.kind}/${body.apiVersion}`,
+        });
+    }
+    switch (kind) {
+        case 'dsse':
+            // Rekor V1 and V2 use incompatible types so we need to branch here based on version
+            if (version == dsse_1.DSSE_API_VERSION_V1) {
+                return (0, dsse_1.verifyDSSETLogBody)(body, sigContent);
+            }
+            else {
+                const entryRekorV2 = v2_1.Entry.fromJSON(body);
+                return (0, dsse_1.verifyDSSETLogBodyV2)(entryRekorV2, sigContent);
+            }
+        case 'intoto':
+            return (0, intoto_1.verifyIntotoTLogBody)(body, sigContent);
+        case 'hashedrekord':
+            // Rekor V1 and V2 use incompatible types so we need to branch here based on version
+            if (version == hashedrekord_1.HASHEDREKORD_API_VERSION_V1) {
+                return (0, hashedrekord_1.verifyHashedRekordTLogBody)(body, sigContent);
+            }
+            else {
+                const entryRekorV2 = v2_1.Entry.fromJSON(body);
+                return (0, hashedrekord_1.verifyHashedRekordTLogBodyV2)(entryRekorV2, sigContent);
+            }
+        /* istanbul ignore next */
+        default:
+            throw new error_1.VerificationError({
+                code: 'TLOG_BODY_ERROR',
+                message: `unsupported kind: ${kind}`,
+            });
+    }
+}
+function verifyTLogInclusion(entry, tlogAuthorities) {
+    let inclusionVerified = false;
+    if (isTLogEntryWithInclusionPromise(entry)) {
+        (0, set_1.verifyTLogSET)(entry, tlogAuthorities);
+        inclusionVerified = true;
+    }
+    if (isTLogEntryWithInclusionProof(entry)) {
+        // Bind the claimed log ID to the authority that verifies the checkpoint.
+        const matchingAuthorities = tlogAuthorities.filter((tlog) => tlog.logID.equals(entry.logId.keyId));
+        const checkpoint = (0, checkpoint_1.verifyCheckpoint)(entry, matchingAuthorities);
+        (0, merkle_1.verifyMerkleInclusion)(entry, checkpoint);
+        inclusionVerified = true;
+    }
+    if (!inclusionVerified) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_MISSING_INCLUSION_ERROR',
+            message: 'inclusion could not be verified',
+        });
+    }
+    return;
+}
+function isTLogEntryWithInclusionPromise(entry) {
+    return entry.inclusionPromise !== undefined;
+}
+function isTLogEntryWithInclusionProof(entry) {
+    return entry.inclusionProof !== undefined;
+}
+
+
+/***/ }),
+
+/***/ 7703:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifyIntotoTLogBody = verifyIntotoTLogBody;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const error_1 = __nccwpck_require__(6849);
+// Compare the given intoto tlog entry to the given bundle
+function verifyIntotoTLogBody(tlogEntry, content) {
+    switch (tlogEntry.apiVersion) {
+        case '0.0.2':
+            return verifyIntoto002TLogBody(tlogEntry, content);
+        default:
+            throw new error_1.VerificationError({
+                code: 'TLOG_BODY_ERROR',
+                message: `unsupported intoto version: ${tlogEntry.apiVersion}`,
+            });
+    }
+}
+// Compare the given intoto v0.0.2 tlog entry to the given DSSE envelope.
+function verifyIntoto002TLogBody(tlogEntry, content) {
+    // Ensure the bundle's DSSE contains a single signature
+    if (tlogEntry.spec.content.envelope.signatures?.length !== 1) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'signature count mismatch',
+        });
+    }
+    // Signature is double-base64-encoded in the tlog entry
+    const tlogSig = base64Decode(tlogEntry.spec.content.envelope.signatures[0].sig);
+    // Ensure that the signature in the bundle's DSSE matches tlog entry
+    if (!content.compareSignature(Buffer.from(tlogSig, 'base64'))) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'tlog entry signature mismatch',
+        });
+    }
+    // Ensure the digest of the bundle's DSSE payload matches the digest in the
+    // tlog entry
+    const tlogHash = tlogEntry.spec.content.payloadHash?.value || '';
+    if (!content.compareDigest(Buffer.from(tlogHash, 'hex'))) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_BODY_ERROR',
+            message: 'DSSE payload hash mismatch',
+        });
+    }
+}
+function base64Decode(str) {
+    return Buffer.from(str, 'base64').toString('utf-8');
+}
+
+
+/***/ }),
+
+/***/ 7046:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifyMerkleInclusion = verifyMerkleInclusion;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const core_1 = __nccwpck_require__(3917);
+const error_1 = __nccwpck_require__(6849);
+const RFC6962_LEAF_HASH_PREFIX = Buffer.from([0x00]);
+const RFC6962_NODE_HASH_PREFIX = Buffer.from([0x01]);
+function verifyMerkleInclusion(entry, checkpoint) {
+    const inclusionProof = entry.inclusionProof;
+    // logIndex is attacker-controlled; parse defensively so malformed input
+    // yields a VerificationError rather than an uncaught SyntaxError.
+    let logIndex;
+    try {
+        logIndex = BigInt(inclusionProof.logIndex);
+    }
+    catch {
+        throw new error_1.VerificationError({
+            code: 'TLOG_INCLUSION_PROOF_ERROR',
+            message: 'invalid inclusion proof log index',
+        });
+    }
+    const treeSize = BigInt(checkpoint.logSize);
+    if (logIndex < 0n || logIndex >= treeSize) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_INCLUSION_PROOF_ERROR',
+            message: `invalid index: ${logIndex}`,
+        });
+    }
+    // Figure out which subset of hashes corresponds to the inner and border
+    // nodes
+    const { inner, border } = decompInclProof(logIndex, treeSize);
+    if (inclusionProof.hashes.length !== inner + border) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_INCLUSION_PROOF_ERROR',
+            message: 'invalid hash count',
+        });
+    }
+    const innerHashes = inclusionProof.hashes.slice(0, inner);
+    const borderHashes = inclusionProof.hashes.slice(inner);
+    // The entry's hash is the leaf hash
+    const leafHash = hashLeaf(entry.canonicalizedBody);
+    // Chain the hashes belonging to the inner and border portions
+    const calculatedHash = chainBorderRight(chainInner(leafHash, innerHashes, logIndex), borderHashes);
+    // Calculated hash should match the root hash in the inclusion proof
+    if (!core_1.crypto.bufferEqual(calculatedHash, checkpoint.logHash)) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_INCLUSION_PROOF_ERROR',
+            message: 'calculated root hash does not match inclusion proof',
+        });
+    }
+}
+// Breaks down inclusion proof for a leaf at the specified index in a tree of
+// the specified size. The split point is where paths to the index leaf and
+// the (size - 1) leaf diverge. Returns lengths of the bottom and upper proof
+// parts.
+function decompInclProof(index, size) {
+    const inner = innerProofSize(index, size);
+    const border = onesCount(index >> BigInt(inner));
+    return { inner, border };
+}
+// Computes a subtree hash for a node on or below the tree's right border.
+// Assumes the provided proof hashes are ordered from lower to higher levels
+// and seed is the initial hash of the node specified by the index.
+function chainInner(seed, hashes, index) {
+    return hashes.reduce((acc, h, i) => {
+        if ((index >> BigInt(i)) & BigInt(1)) {
+            return hashChildren(h, acc);
+        }
+        else {
+            return hashChildren(acc, h);
+        }
+    }, seed);
+}
+// Computes a subtree hash for nodes along the tree's right border.
+function chainBorderRight(seed, hashes) {
+    return hashes.reduce((acc, h) => hashChildren(h, acc), seed);
+}
+function innerProofSize(index, size) {
+    return bitLength(index ^ (size - BigInt(1)));
+}
+// Counts the number of ones in the binary representation of the given number.
+// https://en.wikipedia.org/wiki/Hamming_weight
+function onesCount(num) {
+    return num.toString(2).split('1').length - 1;
+}
+// Returns the number of bits necessary to represent an integer in binary.
+function bitLength(n) {
+    if (n === 0n) {
+        return 0;
+    }
+    return n.toString(2).length;
+}
+// Hashing logic according to RFC6962.
+// https://datatracker.ietf.org/doc/html/rfc6962#section-2
+function hashChildren(left, right) {
+    return core_1.crypto.digest('sha256', RFC6962_NODE_HASH_PREFIX, left, right);
+}
+function hashLeaf(leaf) {
+    return core_1.crypto.digest('sha256', RFC6962_LEAF_HASH_PREFIX, leaf);
+}
+
+
+/***/ }),
+
+/***/ 333:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifyTLogSET = verifyTLogSET;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const core_1 = __nccwpck_require__(3917);
+const error_1 = __nccwpck_require__(6849);
+const trust_1 = __nccwpck_require__(7822);
+// Verifies the SET for the given entry against the list of trusted
+// transparency logs. Returns true if the SET can be verified against at least
+// one of the trusted logs; otherwise, returns false.
+function verifyTLogSET(entry, tlogs) {
+    // Filter the list of tlog instances to only those which might be able to
+    // verify the SET
+    const validTLogs = (0, trust_1.filterTLogAuthorities)(tlogs, {
+        logID: entry.logId.keyId,
+        targetDate: new Date(Number(entry.integratedTime) * 1000),
+    });
+    // Check to see if we can verify the SET against any of the valid tlogs
+    const verified = validTLogs.some((tlog) => {
+        // Re-create the original Rekor verification payload
+        const payload = toVerificationPayload(entry);
+        // Canonicalize the payload and turn into a buffer for verification
+        const data = Buffer.from(core_1.json.canonicalize(payload), 'utf8');
+        // Extract the SET from the tlog entry
+        const signature = entry.inclusionPromise.signedEntryTimestamp;
+        return core_1.crypto.verify(data, tlog.publicKey, signature);
+    });
+    if (!verified) {
+        throw new error_1.VerificationError({
+            code: 'TLOG_INCLUSION_PROMISE_ERROR',
+            message: 'inclusion promise could not be verified',
+        });
+    }
+}
+// Returns a properly formatted "VerificationPayload" for one of the
+// transaction log entires in the given bundle which can be used for SET
+// verification.
+function toVerificationPayload(entry) {
+    const { integratedTime, logIndex, logId, canonicalizedBody } = entry;
+    return {
+        body: canonicalizedBody.toString('base64'),
+        integratedTime: Number(integratedTime),
+        logIndex: Number(logIndex),
+        logID: logId.keyId.toString('hex'),
+    };
+}
+
+
+/***/ }),
+
+/***/ 9738:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.filterCertAuthorities = filterCertAuthorities;
+exports.filterTLogAuthorities = filterTLogAuthorities;
+function filterCertAuthorities(certAuthorities, timestamp) {
+    return certAuthorities.filter((ca) => {
+        return ca.validFor.start <= timestamp && ca.validFor.end >= timestamp;
+    });
+}
+// Filter the list of tlog instances to only those which match the given log
+// ID and have public keys which are valid for the given integrated time.
+function filterTLogAuthorities(tlogAuthorities, criteria) {
+    return tlogAuthorities.filter((tlog) => {
+        // If we're filtering by log ID and the log IDs don't match, we can't use
+        // this tlog
+        if (criteria.logID && !tlog.logID.equals(criteria.logID)) {
+            return false;
+        }
+        // Check that the integrated time is within the validFor range
+        return (tlog.validFor.start <= criteria.targetDate &&
+            criteria.targetDate <= tlog.validFor.end);
+    });
+}
+
+
+/***/ }),
+
+/***/ 7822:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.filterTLogAuthorities = exports.filterCertAuthorities = void 0;
+exports.toTrustMaterial = toTrustMaterial;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const core_1 = __nccwpck_require__(3917);
+const protobuf_specs_1 = __nccwpck_require__(9654);
+const error_1 = __nccwpck_require__(6849);
+const BEGINNING_OF_TIME = new Date(0);
+const END_OF_TIME = new Date(8640000000000000);
+var filter_1 = __nccwpck_require__(9738);
+Object.defineProperty(exports, "filterCertAuthorities", ({ enumerable: true, get: function () { return filter_1.filterCertAuthorities; } }));
+Object.defineProperty(exports, "filterTLogAuthorities", ({ enumerable: true, get: function () { return filter_1.filterTLogAuthorities; } }));
+function toTrustMaterial(root, keys) {
+    const keyFinder = typeof keys === 'function' ? keys : keyLocator(keys);
+    return {
+        certificateAuthorities: root.certificateAuthorities.map(createCertAuthority),
+        timestampAuthorities: root.timestampAuthorities.map(createCertAuthority),
+        tlogs: root.tlogs.map(createTLogAuthority),
+        ctlogs: root.ctlogs.map(createTLogAuthority),
+        publicKey: keyFinder,
+    };
+}
+function createTLogAuthority(tlogInstance) {
+    const keyDetails = tlogInstance.publicKey.keyDetails;
+    const keyType = keyDetails === protobuf_specs_1.PublicKeyDetails.PKCS1_RSA_PKCS1V5 ||
+        keyDetails === protobuf_specs_1.PublicKeyDetails.PKIX_RSA_PKCS1V5 ||
+        keyDetails === protobuf_specs_1.PublicKeyDetails.PKIX_RSA_PKCS1V15_2048_SHA256 ||
+        keyDetails === protobuf_specs_1.PublicKeyDetails.PKIX_RSA_PKCS1V15_3072_SHA256 ||
+        keyDetails === protobuf_specs_1.PublicKeyDetails.PKIX_RSA_PKCS1V15_4096_SHA256
+        ? 'pkcs1'
+        : 'spki';
+    /* istanbul ignore next */
+    return {
+        baseURL: tlogInstance.baseUrl,
+        logID: tlogInstance.checkpointKeyId
+            ? tlogInstance.checkpointKeyId.keyId
+            : tlogInstance.logId.keyId,
+        publicKey: core_1.crypto.createPublicKey(tlogInstance.publicKey.rawBytes, keyType),
+        validFor: {
+            start: tlogInstance.publicKey.validFor?.start || BEGINNING_OF_TIME,
+            end: tlogInstance.publicKey.validFor?.end || END_OF_TIME,
+        },
+    };
+}
+function createCertAuthority(ca) {
+    /* istanbul ignore next */
+    return {
+        certChain: ca.certChain.certificates.map((cert) => {
+            return core_1.X509Certificate.parse(Buffer.from(cert.rawBytes));
+        }),
+        validFor: {
+            start: ca.validFor?.start || BEGINNING_OF_TIME,
+            end: ca.validFor?.end || END_OF_TIME,
+        },
+    };
+}
+function keyLocator(keys) {
+    return (hint) => {
+        const key = (keys || {})[hint];
+        if (!key) {
+            throw new error_1.VerificationError({
+                code: 'PUBLIC_KEY_ERROR',
+                message: `key not found: ${hint}`,
+            });
+        }
+        return {
+            publicKey: core_1.crypto.createPublicKey(key.rawBytes),
+            validFor: (date) => {
+                /* istanbul ignore next */
+                return ((key.validFor?.start || BEGINNING_OF_TIME) <= date &&
+                    (key.validFor?.end || END_OF_TIME) >= date);
+            },
+        };
+    };
+}
+
+
+/***/ }),
+
+/***/ 4433:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Verifier = void 0;
+/*
+Copyright 2023 The Sigstore Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+const util_1 = __nccwpck_require__(9023);
+const error_1 = __nccwpck_require__(6849);
+const key_1 = __nccwpck_require__(3771);
+const policy_1 = __nccwpck_require__(8037);
+const timestamp_1 = __nccwpck_require__(7968);
+const tlog_1 = __nccwpck_require__(8218);
+class Verifier {
+    trustMaterial;
+    options;
+    constructor(trustMaterial, options = {}) {
+        this.trustMaterial = trustMaterial;
+        this.options = {
+            ctlogThreshold: options.ctlogThreshold ?? 1,
+            tlogThreshold: options.tlogThreshold ?? 1,
+            timestampThreshold: options.timestampThreshold ?? options.tsaThreshold ?? 1,
+            tsaThreshold: 0,
+        };
+    }
+    verify(entity, policy) {
+        const timestamps = this.verifyTimestamps(entity);
+        const signer = this.verifySigningKey(entity, timestamps);
+        this.verifyTLogs(entity);
+        this.verifySignature(entity, signer);
+        if (policy) {
+            this.verifyPolicy(policy, signer.identity || {});
+        }
+        return signer;
+    }
+    // Checks that all of the timestamps in the entity are valid and returns them
+    verifyTimestamps(entity) {
+        const timestamps = [];
+        for (const timestamp of entity.timestamps) {
+            switch (timestamp.$case) {
+                case 'timestamp-authority':
+                    timestamps.push((0, timestamp_1.getTSATimestamp)(timestamp.timestamp, entity.signature.signature, this.trustMaterial.timestampAuthorities));
+                    break;
+                case 'transparency-log': {
+                    const result = (0, timestamp_1.getTLogTimestamp)(timestamp.tlogEntry);
+                    if (result) {
+                        timestamps.push(result);
+                    }
+                    break;
+                }
+            }
+        }
+        // Check for duplicate timestamps
+        if (containsDupes(timestamps)) {
+            throw new error_1.VerificationError({
+                code: 'TIMESTAMP_ERROR',
+                message: 'duplicate timestamp',
+            });
+        }
+        if (timestamps.length < this.options.timestampThreshold) {
+            throw new error_1.VerificationError({
+                code: 'TIMESTAMP_ERROR',
+                message: `expected ${this.options.timestampThreshold} timestamps, got ${timestamps.length}`,
+            });
+        }
+        return timestamps.map((t) => t.timestamp);
+    }
+    // Checks that the signing key is valid for all of the the supplied timestamps
+    // and returns the signer.
+    verifySigningKey({ key }, timestamps) {
+        switch (key.$case) {
+            case 'public-key': {
+                return (0, key_1.verifyPublicKey)(key.hint, timestamps, this.trustMaterial);
+            }
+            case 'certificate': {
+                const result = (0, key_1.verifyCertificate)(key.certificate, timestamps, this.trustMaterial);
+                /* istanbul ignore next - no fixture */
+                if (containsDupes(result.scts)) {
+                    throw new error_1.VerificationError({
+                        code: 'CERTIFICATE_ERROR',
+                        message: 'duplicate SCT',
+                    });
+                }
+                if (result.scts.length < this.options.ctlogThreshold) {
+                    throw new error_1.VerificationError({
+                        code: 'CERTIFICATE_ERROR',
+                        message: `expected ${this.options.ctlogThreshold} SCTs, got ${result.scts.length}`,
+                    });
+                }
+                return result.signer;
+            }
+        }
+    }
+    // Checks that the tlog entries are valid for the supplied content
+    verifyTLogs({ signature: content, tlogEntries }) {
+        const entryIDs = [];
+        tlogEntries.forEach((entry) => {
+            (0, tlog_1.verifyTLogInclusion)(entry, this.trustMaterial.tlogs);
+            (0, tlog_1.verifyTLogBody)(entry, content);
+            entryIDs.push({
+                logID: entry.logId.keyId,
+                body: entry.canonicalizedBody,
+            });
+        });
+        // Check for duplicate entries so that repeated copies of a single entry
+        // cannot be counted more than once toward the threshold. Inclusion
+        // verification authenticates the log ID and body, but a proof does not
+        // authenticate the top-level log index.
+        if (containsDupes(entryIDs)) {
+            throw new error_1.VerificationError({
+                code: 'TLOG_ERROR',
+                message: 'duplicate tlog entry',
+            });
+        }
+        if (entryIDs.length < this.options.tlogThreshold) {
+            throw new error_1.VerificationError({
+                code: 'TLOG_ERROR',
+                message: `expected ${this.options.tlogThreshold} tlog entries, got ${entryIDs.length}`,
+            });
+        }
+    }
+    // Checks that the signature is valid for the supplied content
+    verifySignature(entity, signer) {
+        if (!entity.signature.verifySignature(signer.key)) {
+            throw new error_1.VerificationError({
+                code: 'SIGNATURE_ERROR',
+                message: 'signature verification failed',
+            });
+        }
+    }
+    verifyPolicy(policy, identity) {
+        // Check the subject alternative name of the signer matches the policy
+        /* istanbul ignore else */
+        if (policy.subjectAlternativeName) {
+            (0, policy_1.verifySubjectAlternativeName)(policy.subjectAlternativeName, identity.subjectAlternativeName);
+        }
+        // Check that the extensions of the signer match the policy
+        /* istanbul ignore else */
+        if (policy.extensions) {
+            (0, policy_1.verifyExtensions)(policy.extensions, identity.extensions);
+        }
+        // Check that the OIDs of the signer match the policy
+        /* istanbul ignore if */
+        if (policy.oids) {
+            (0, policy_1.verifyOIDs)(policy.oids, identity.oids);
+        }
+    }
+}
+exports.Verifier = Verifier;
+// Checks for duplicate items in the array. Objects are compared using
+// deep equality.
+function containsDupes(arr) {
+    for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+            if ((0, util_1.isDeepStrictEqual)(arr[i], arr[j])) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
+/***/ }),
+
+/***/ 5178:
+/***/ ((module) => {
+
+const COMMA = ',';
+const COLON = ':';
+const LEFT_SQUARE_BRACKET = '[';
+const RIGHT_SQUARE_BRACKET = ']';
+const LEFT_CURLY_BRACKET = '{';
+const RIGHT_CURLY_BRACKET = '}';
+
+// Recursively encodes the supplied object according to the canonical JSON form
+// as specified at http://wiki.laptop.org/go/Canonical_JSON. It's a restricted
+// dialect of JSON in which keys are lexically sorted, floats are not allowed,
+// and only double quotes and backslashes are escaped.
+function canonicalize(object) {
+  const buffer = [];
+  if (typeof object === 'string') {
+    buffer.push(canonicalizeString(object));
+  } else if (typeof object === 'boolean') {
+    buffer.push(JSON.stringify(object));
+  } else if (Number.isInteger(object)) {
+    buffer.push(JSON.stringify(object));
+  } else if (object === null) {
+    buffer.push(JSON.stringify(object));
+  } else if (Array.isArray(object)) {
+    buffer.push(LEFT_SQUARE_BRACKET);
+    let first = true;
+    object.forEach((element) => {
+      if (!first) {
+        buffer.push(COMMA);
+      }
+      first = false;
+      buffer.push(canonicalize(element));
+    });
+    buffer.push(RIGHT_SQUARE_BRACKET);
+  } else if (typeof object === 'object') {
+    buffer.push(LEFT_CURLY_BRACKET);
+    let first = true;
+    Object.keys(object)
+      .sort()
+      .forEach((property) => {
+        if (!first) {
+          buffer.push(COMMA);
+        }
+        first = false;
+        buffer.push(canonicalizeString(property));
+        buffer.push(COLON);
+        buffer.push(canonicalize(object[property]));
+      });
+    buffer.push(RIGHT_CURLY_BRACKET);
+  } else {
+    throw new TypeError('cannot encode ' + object.toString());
+  }
+
+  return buffer.join('');
+}
+
+// String canonicalization consists of escaping backslash (\) and double
+// quote (") characters and wrapping the resulting string in double quotes.
+function canonicalizeString(string) {
+  const escapedString = string.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return '"' + escapedString + '"';
+}
+
+module.exports = {
+  canonicalize,
+};
+
+
+/***/ }),
+
+/***/ 8883:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Signed = exports.MetadataKind = void 0;
+exports.isMetadataKind = isMetadataKind;
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const error_1 = __nccwpck_require__(5494);
+const utils_1 = __nccwpck_require__(846);
+const SPECIFICATION_VERSION = ['1', '0', '31'];
+var MetadataKind;
+(function (MetadataKind) {
+    MetadataKind["Root"] = "root";
+    MetadataKind["Timestamp"] = "timestamp";
+    MetadataKind["Snapshot"] = "snapshot";
+    MetadataKind["Targets"] = "targets";
+})(MetadataKind || (exports.MetadataKind = MetadataKind = {}));
+function isMetadataKind(value) {
+    return (typeof value === 'string' &&
+        Object.values(MetadataKind).includes(value));
+}
+/***
+ * A base class for the signed part of TUF metadata.
+ *
+ * Objects with base class Signed are usually included in a ``Metadata`` object
+ * on the signed attribute. This class provides attributes and methods that
+ * are common for all TUF metadata types (roles).
+ */
+class Signed {
+    specVersion;
+    expires;
+    version;
+    unrecognizedFields;
+    constructor(options) {
+        this.specVersion = options.specVersion || SPECIFICATION_VERSION.join('.');
+        const specList = this.specVersion.split('.');
+        if (!(specList.length === 2 || specList.length === 3) ||
+            !specList.every((item) => isNumeric(item))) {
+            throw new error_1.ValueError('Failed to parse specVersion');
+        }
+        // major version must match
+        if (specList[0] != SPECIFICATION_VERSION[0]) {
+            throw new error_1.ValueError('Unsupported specVersion');
+        }
+        this.expires = options.expires;
+        this.version = options.version;
+        this.unrecognizedFields = options.unrecognizedFields || {};
+    }
+    equals(other) {
+        if (!(other instanceof Signed)) {
+            return false;
+        }
+        return (this.specVersion === other.specVersion &&
+            this.expires === other.expires &&
+            this.version === other.version &&
+            util_1.default.isDeepStrictEqual(this.unrecognizedFields, other.unrecognizedFields));
+    }
+    isExpired(referenceTime) {
+        if (!referenceTime) {
+            referenceTime = new Date();
+        }
+        return referenceTime >= new Date(this.expires);
+    }
+    static commonFieldsFromJSON(data) {
+        const { spec_version, expires, version, ...rest } = data;
+        if (!utils_1.guard.isDefined(spec_version)) {
+            throw new error_1.ValueError('spec_version is not defined');
+        }
+        else if (typeof spec_version !== 'string') {
+            throw new TypeError('spec_version must be a string');
+        }
+        if (!utils_1.guard.isDefined(expires)) {
+            throw new error_1.ValueError('expires is not defined');
+        }
+        else if (!(typeof expires === 'string')) {
+            throw new TypeError('expires must be a string');
+        }
+        else if (Number.isNaN(new Date(expires).getTime())) {
+            throw new error_1.ValueError('Failed to parse expires');
+        }
+        if (!utils_1.guard.isDefined(version)) {
+            throw new error_1.ValueError('version is not defined');
+        }
+        else if (!(typeof version === 'number')) {
+            throw new TypeError('version must be a number');
+        }
+        return {
+            specVersion: spec_version,
+            expires,
+            version,
+            unrecognizedFields: rest,
+        };
+    }
+}
+exports.Signed = Signed;
+function isNumeric(str) {
+    return !isNaN(Number(str));
+}
+
+
+/***/ }),
+
+/***/ 4727:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Delegations = void 0;
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const error_1 = __nccwpck_require__(5494);
+const key_1 = __nccwpck_require__(3343);
+const role_1 = __nccwpck_require__(5934);
+const utils_1 = __nccwpck_require__(846);
+/**
+ * A container object storing information about all delegations.
+ *
+ * Targets roles that are trusted to provide signed metadata files
+ * describing targets with designated pathnames and/or further delegations.
+ */
+class Delegations {
+    keys;
+    roles;
+    unrecognizedFields;
+    succinctRoles;
+    constructor(options) {
+        this.keys = options.keys;
+        this.unrecognizedFields = options.unrecognizedFields || {};
+        if (options.roles) {
+            if (Object.keys(options.roles).some((roleName) => role_1.TOP_LEVEL_ROLE_NAMES.includes(roleName))) {
+                throw new error_1.ValueError('Delegated role name conflicts with top-level role name');
+            }
+        }
+        this.succinctRoles = options.succinctRoles;
+        this.roles = options.roles;
+    }
+    equals(other) {
+        if (!(other instanceof Delegations)) {
+            return false;
+        }
+        return (util_1.default.isDeepStrictEqual(this.keys, other.keys) &&
+            util_1.default.isDeepStrictEqual(this.roles, other.roles) &&
+            util_1.default.isDeepStrictEqual(this.unrecognizedFields, other.unrecognizedFields) &&
+            util_1.default.isDeepStrictEqual(this.succinctRoles, other.succinctRoles));
+    }
+    *rolesForTarget(targetPath) {
+        if (this.roles) {
+            for (const role of Object.values(this.roles)) {
+                if (role.isDelegatedPath(targetPath)) {
+                    yield { role: role.name, terminating: role.terminating };
+                }
+            }
+        }
+        else if (this.succinctRoles) {
+            yield {
+                role: this.succinctRoles.getRoleForTarget(targetPath),
+                terminating: true,
+            };
+        }
+    }
+    toJSON() {
+        const json = {
+            keys: keysToJSON(this.keys),
+            ...this.unrecognizedFields,
+        };
+        if (this.roles) {
+            json.roles = rolesToJSON(this.roles);
+        }
+        else if (this.succinctRoles) {
+            json.succinct_roles = this.succinctRoles.toJSON();
+        }
+        return json;
+    }
+    static fromJSON(data) {
+        const { keys, roles, succinct_roles, ...unrecognizedFields } = data;
+        let succinctRoles;
+        if (utils_1.guard.isObject(succinct_roles)) {
+            succinctRoles = role_1.SuccinctRoles.fromJSON(succinct_roles);
+        }
+        return new Delegations({
+            keys: keysFromJSON(keys),
+            roles: rolesFromJSON(roles),
+            unrecognizedFields,
+            succinctRoles,
+        });
+    }
+}
+exports.Delegations = Delegations;
+function keysToJSON(keys) {
+    return Object.entries(keys).reduce((acc, [keyId, key]) => ({
+        ...acc,
+        [keyId]: key.toJSON(),
+    }), {});
+}
+function rolesToJSON(roles) {
+    return Object.values(roles).map((role) => role.toJSON());
+}
+function keysFromJSON(data) {
+    if (!utils_1.guard.isObjectRecord(data)) {
+        throw new TypeError('keys is malformed');
+    }
+    return Object.entries(data).reduce((acc, [keyID, keyData]) => ({
+        ...acc,
+        [keyID]: key_1.Key.fromJSON(keyID, keyData),
+    }), {});
+}
+function rolesFromJSON(data) {
+    let roleMap;
+    if (utils_1.guard.isDefined(data)) {
+        if (!utils_1.guard.isObjectArray(data)) {
+            throw new TypeError('roles is malformed');
+        }
+        roleMap = data.reduce((acc, role) => {
+            const delegatedRole = role_1.DelegatedRole.fromJSON(role);
+            if (Object.hasOwn(acc, delegatedRole.name)) {
+                throw new error_1.ValueError(`duplicate delegated role: ${delegatedRole.name}`);
+            }
+            return {
+                ...acc,
+                [delegatedRole.name]: delegatedRole,
+            };
+        }, {});
+    }
+    return roleMap;
+}
+
+
+/***/ }),
+
+/***/ 5494:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.UnsupportedAlgorithmError = exports.CryptoError = exports.LengthOrHashMismatchError = exports.UnsignedMetadataError = exports.RepositoryError = exports.ValueError = void 0;
+// An error about insufficient values
+class ValueError extends Error {
+}
+exports.ValueError = ValueError;
+// An error with a repository's state, such as a missing file.
+// It covers all exceptions that come from the repository side when
+// looking from the perspective of users of metadata API or ngclient.
+class RepositoryError extends Error {
+}
+exports.RepositoryError = RepositoryError;
+// An error about metadata object with insufficient threshold of signatures.
+class UnsignedMetadataError extends RepositoryError {
+}
+exports.UnsignedMetadataError = UnsignedMetadataError;
+// An error while checking the length and hash values of an object.
+class LengthOrHashMismatchError extends RepositoryError {
+}
+exports.LengthOrHashMismatchError = LengthOrHashMismatchError;
+class CryptoError extends Error {
+}
+exports.CryptoError = CryptoError;
+class UnsupportedAlgorithmError extends CryptoError {
+}
+exports.UnsupportedAlgorithmError = UnsupportedAlgorithmError;
+
+
+/***/ }),
+
+/***/ 6708:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TargetFile = exports.MetaFile = void 0;
+const crypto_1 = __importDefault(__nccwpck_require__(6982));
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const error_1 = __nccwpck_require__(5494);
+const utils_1 = __nccwpck_require__(846);
+// A container with information about a particular metadata file.
+//
+// This class is used for Timestamp and Snapshot metadata.
+class MetaFile {
+    version;
+    length;
+    hashes;
+    unrecognizedFields;
+    constructor(opts) {
+        if (opts.version <= 0) {
+            throw new error_1.ValueError('Metafile version must be at least 1');
+        }
+        if (opts.length !== undefined) {
+            validateLength(opts.length);
+        }
+        this.version = opts.version;
+        this.length = opts.length;
+        this.hashes = opts.hashes;
+        this.unrecognizedFields = opts.unrecognizedFields || {};
+    }
+    equals(other) {
+        if (!(other instanceof MetaFile)) {
+            return false;
+        }
+        return (this.version === other.version &&
+            this.length === other.length &&
+            util_1.default.isDeepStrictEqual(this.hashes, other.hashes) &&
+            util_1.default.isDeepStrictEqual(this.unrecognizedFields, other.unrecognizedFields));
+    }
+    verify(data) {
+        // Verifies that the given data matches the expected length.
+        if (this.length !== undefined) {
+            if (data.length !== this.length) {
+                throw new error_1.LengthOrHashMismatchError(`Expected length ${this.length} but got ${data.length}`);
+            }
+        }
+        // Verifies that the given data matches the supplied hashes.
+        if (this.hashes) {
+            Object.entries(this.hashes).forEach(([key, value]) => {
+                let hash;
+                try {
+                    hash = crypto_1.default.createHash(key);
+                }
+                catch (e) {
+                    throw new error_1.LengthOrHashMismatchError(`Hash algorithm ${key} not supported`);
+                }
+                const observedHash = hash.update(data).digest('hex');
+                if (observedHash !== value) {
+                    throw new error_1.LengthOrHashMismatchError(`Expected hash ${value} but got ${observedHash}`);
+                }
+            });
+        }
+    }
+    toJSON() {
+        const json = {
+            version: this.version,
+            ...this.unrecognizedFields,
+        };
+        if (this.length !== undefined) {
+            json.length = this.length;
+        }
+        if (this.hashes) {
+            json.hashes = this.hashes;
+        }
+        return json;
+    }
+    static fromJSON(data) {
+        const { version, length, hashes, ...rest } = data;
+        if (typeof version !== 'number') {
+            throw new TypeError('version must be a number');
+        }
+        if (utils_1.guard.isDefined(length) && typeof length !== 'number') {
+            throw new TypeError('length must be a number');
+        }
+        if (utils_1.guard.isDefined(hashes) && !utils_1.guard.isStringRecord(hashes)) {
+            throw new TypeError('hashes must be string keys and values');
+        }
+        return new MetaFile({
+            version,
+            length,
+            hashes,
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.MetaFile = MetaFile;
+// Container for info about a particular target file.
+//
+// This class is used for Target metadata.
+class TargetFile {
+    length;
+    path;
+    hashes;
+    unrecognizedFields;
+    constructor(opts) {
+        validateLength(opts.length);
+        this.length = opts.length;
+        this.path = opts.path;
+        this.hashes = opts.hashes;
+        this.unrecognizedFields = opts.unrecognizedFields || {};
+    }
+    get custom() {
+        const custom = this.unrecognizedFields['custom'];
+        if (!custom || Array.isArray(custom) || !(typeof custom === 'object')) {
+            return {};
+        }
+        return custom;
+    }
+    equals(other) {
+        if (!(other instanceof TargetFile)) {
+            return false;
+        }
+        return (this.length === other.length &&
+            this.path === other.path &&
+            util_1.default.isDeepStrictEqual(this.hashes, other.hashes) &&
+            util_1.default.isDeepStrictEqual(this.unrecognizedFields, other.unrecognizedFields));
+    }
+    async verify(stream) {
+        let observedLength = 0;
+        // Create a digest for each hash algorithm
+        const digests = Object.keys(this.hashes).reduce((acc, key) => {
+            try {
+                acc[key] = crypto_1.default.createHash(key);
+            }
+            catch (e) {
+                throw new error_1.LengthOrHashMismatchError(`Hash algorithm ${key} not supported`);
+            }
+            return acc;
+        }, {});
+        // Read stream chunk by chunk
+        for await (const chunk of stream) {
+            // Keep running tally of stream length
+            observedLength += chunk.length;
+            // Append chunk to each digest
+            Object.values(digests).forEach((digest) => {
+                digest.update(chunk);
+            });
+        }
+        // Verify length matches expected value
+        if (observedLength !== this.length) {
+            throw new error_1.LengthOrHashMismatchError(`Expected length ${this.length} but got ${observedLength}`);
+        }
+        // Verify each digest matches expected value
+        Object.entries(digests).forEach(([key, value]) => {
+            const expected = this.hashes[key];
+            const actual = value.digest('hex');
+            if (actual !== expected) {
+                throw new error_1.LengthOrHashMismatchError(`Expected hash ${expected} but got ${actual}`);
+            }
+        });
+    }
+    toJSON() {
+        return {
+            length: this.length,
+            hashes: this.hashes,
+            ...this.unrecognizedFields,
+        };
+    }
+    static fromJSON(path, data) {
+        const { length, hashes, ...rest } = data;
+        if (typeof length !== 'number') {
+            throw new TypeError('length must be a number');
+        }
+        if (!utils_1.guard.isStringRecord(hashes)) {
+            throw new TypeError('hashes must have string keys and values');
+        }
+        return new TargetFile({
+            length,
+            path,
+            hashes,
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.TargetFile = TargetFile;
+// Check that supplied length if valid
+function validateLength(length) {
+    if (length < 0) {
+        throw new error_1.ValueError('Length must be at least 0');
+    }
+}
+
+
+/***/ }),
+
+/***/ 8908:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Timestamp = exports.Targets = exports.Snapshot = exports.Signature = exports.Root = exports.Metadata = exports.Key = exports.TargetFile = exports.MetaFile = exports.ValueError = exports.MetadataKind = void 0;
+var base_1 = __nccwpck_require__(8883);
+Object.defineProperty(exports, "MetadataKind", ({ enumerable: true, get: function () { return base_1.MetadataKind; } }));
+var error_1 = __nccwpck_require__(5494);
+Object.defineProperty(exports, "ValueError", ({ enumerable: true, get: function () { return error_1.ValueError; } }));
+var file_1 = __nccwpck_require__(6708);
+Object.defineProperty(exports, "MetaFile", ({ enumerable: true, get: function () { return file_1.MetaFile; } }));
+Object.defineProperty(exports, "TargetFile", ({ enumerable: true, get: function () { return file_1.TargetFile; } }));
+var key_1 = __nccwpck_require__(3343);
+Object.defineProperty(exports, "Key", ({ enumerable: true, get: function () { return key_1.Key; } }));
+var metadata_1 = __nccwpck_require__(6555);
+Object.defineProperty(exports, "Metadata", ({ enumerable: true, get: function () { return metadata_1.Metadata; } }));
+var root_1 = __nccwpck_require__(8946);
+Object.defineProperty(exports, "Root", ({ enumerable: true, get: function () { return root_1.Root; } }));
+var signature_1 = __nccwpck_require__(874);
+Object.defineProperty(exports, "Signature", ({ enumerable: true, get: function () { return signature_1.Signature; } }));
+var snapshot_1 = __nccwpck_require__(9386);
+Object.defineProperty(exports, "Snapshot", ({ enumerable: true, get: function () { return snapshot_1.Snapshot; } }));
+var targets_1 = __nccwpck_require__(6150);
+Object.defineProperty(exports, "Targets", ({ enumerable: true, get: function () { return targets_1.Targets; } }));
+var timestamp_1 = __nccwpck_require__(1796);
+Object.defineProperty(exports, "Timestamp", ({ enumerable: true, get: function () { return timestamp_1.Timestamp; } }));
+
+
+/***/ }),
+
+/***/ 3343:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Key = void 0;
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const error_1 = __nccwpck_require__(5494);
+const utils_1 = __nccwpck_require__(846);
+const key_1 = __nccwpck_require__(6361);
+// A container class representing the public portion of a Key.
+class Key {
+    keyID;
+    keyType;
+    scheme;
+    keyVal;
+    unrecognizedFields;
+    constructor(options) {
+        const { keyID, keyType, scheme, keyVal, unrecognizedFields } = options;
+        this.keyID = keyID;
+        this.keyType = keyType;
+        this.scheme = scheme;
+        this.keyVal = keyVal;
+        this.unrecognizedFields = unrecognizedFields || {};
+    }
+    // Verifies the that the metadata.signatures contains a signature made with
+    // this key and is correctly signed.
+    verifySignature(metadata) {
+        const signature = metadata.signatures[this.keyID];
+        if (!signature)
+            throw new error_1.UnsignedMetadataError('no signature for key found in metadata');
+        if (!this.keyVal.public)
+            throw new error_1.UnsignedMetadataError('no public key found');
+        const publicKey = (0, key_1.getPublicKey)({
+            keyType: this.keyType,
+            scheme: this.scheme,
+            keyVal: this.keyVal.public,
+        });
+        const signedData = metadata.signed.toJSON();
+        try {
+            if (!utils_1.crypto.verifySignature(signedData, publicKey, signature.sig)) {
+                throw new error_1.UnsignedMetadataError(`failed to verify ${this.keyID} signature`);
+            }
+        }
+        catch (error) {
+            if (error instanceof error_1.UnsignedMetadataError) {
+                throw error;
+            }
+            throw new error_1.UnsignedMetadataError(`failed to verify ${this.keyID} signature`);
+        }
+    }
+    equals(other) {
+        if (!(other instanceof Key)) {
+            return false;
+        }
+        return (this.keyID === other.keyID &&
+            this.keyType === other.keyType &&
+            this.scheme === other.scheme &&
+            util_1.default.isDeepStrictEqual(this.keyVal, other.keyVal) &&
+            util_1.default.isDeepStrictEqual(this.unrecognizedFields, other.unrecognizedFields));
+    }
+    toJSON() {
+        return {
+            keytype: this.keyType,
+            scheme: this.scheme,
+            keyval: this.keyVal,
+            ...this.unrecognizedFields,
+        };
+    }
+    static fromJSON(keyID, data) {
+        const { keytype, scheme, keyval, ...rest } = data;
+        if (typeof keytype !== 'string') {
+            throw new TypeError('keytype must be a string');
+        }
+        if (typeof scheme !== 'string') {
+            throw new TypeError('scheme must be a string');
+        }
+        if (!utils_1.guard.isStringRecord(keyval)) {
+            throw new TypeError('keyval must be a string record');
+        }
+        return new Key({
+            keyID,
+            keyType: keytype,
+            scheme,
+            keyVal: keyval,
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.Key = Key;
+
+
+/***/ }),
+
+/***/ 6555:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Metadata = void 0;
+const canonical_json_1 = __nccwpck_require__(5178);
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const base_1 = __nccwpck_require__(8883);
+const error_1 = __nccwpck_require__(5494);
+const root_1 = __nccwpck_require__(8946);
+const signature_1 = __nccwpck_require__(874);
+const snapshot_1 = __nccwpck_require__(9386);
+const targets_1 = __nccwpck_require__(6150);
+const timestamp_1 = __nccwpck_require__(1796);
+const utils_1 = __nccwpck_require__(846);
+/***
+ * A container for signed TUF metadata.
+ *
+ * Provides methods to convert to and from json, read and write to and
+ * from JSON and to create and verify metadata signatures.
+ *
+ * ``Metadata[T]`` is a generic container type where T can be any one type of
+ * [``Root``, ``Timestamp``, ``Snapshot``, ``Targets``]. The purpose of this
+ * is to allow static type checking of the signed attribute in code using
+ * Metadata::
+ *
+ * root_md = Metadata[Root].fromJSON("root.json")
+ * # root_md type is now Metadata[Root]. This means signed and its
+ * # attributes like consistent_snapshot are now statically typed and the
+ * # types can be verified by static type checkers and shown by IDEs
+ *
+ * Using a type constraint is not required but not doing so means T is not a
+ * specific type so static typing cannot happen. Note that the type constraint
+ * ``[Root]`` is not validated at runtime (as pure annotations are not available
+ * then).
+ *
+ * Apart from ``expires`` all of the arguments to the inner constructors have
+ * reasonable default values for new metadata.
+ */
+class Metadata {
+    signed;
+    signatures;
+    unrecognizedFields;
+    constructor(signed, signatures, unrecognizedFields) {
+        this.signed = signed;
+        this.signatures = signatures || {};
+        this.unrecognizedFields = unrecognizedFields || {};
+    }
+    sign(signer, append = true) {
+        const bytes = Buffer.from((0, canonical_json_1.canonicalize)(this.signed.toJSON()));
+        const signature = signer(bytes);
+        if (!append) {
+            this.signatures = {};
+        }
+        this.signatures[signature.keyID] = signature;
+    }
+    verifyDelegate(delegatedRole, delegatedMetadata) {
+        let role;
+        let keys = {};
+        switch (this.signed.type) {
+            case base_1.MetadataKind.Root:
+                keys = this.signed.keys;
+                role = this.signed.roles[delegatedRole];
+                break;
+            case base_1.MetadataKind.Targets:
+                if (!this.signed.delegations) {
+                    throw new error_1.ValueError(`No delegations found for ${delegatedRole}`);
+                }
+                keys = this.signed.delegations.keys;
+                if (this.signed.delegations.roles) {
+                    role = this.signed.delegations.roles[delegatedRole];
+                }
+                else if (this.signed.delegations.succinctRoles) {
+                    if (this.signed.delegations.succinctRoles.isDelegatedRole(delegatedRole)) {
+                        role = this.signed.delegations.succinctRoles;
+                    }
+                }
+                break;
+            default:
+                throw new TypeError('invalid metadata type');
+        }
+        if (!role) {
+            throw new error_1.ValueError(`no delegation found for ${delegatedRole}`);
+        }
+        const signingKeys = new Set();
+        role.keyIDs.forEach((keyID) => {
+            const key = keys[keyID];
+            // If we dont' have the key, continue checking other keys
+            if (!key) {
+                return;
+            }
+            try {
+                key.verifySignature(delegatedMetadata);
+                signingKeys.add(key.keyID);
+            }
+            catch (error) {
+                // continue
+            }
+        });
+        if (signingKeys.size < role.threshold) {
+            throw new error_1.UnsignedMetadataError(`${delegatedRole} was signed by ${signingKeys.size}/${role.threshold} keys`);
+        }
+    }
+    equals(other) {
+        if (!(other instanceof Metadata)) {
+            return false;
+        }
+        return (
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        this.signed.equals(other.signed) &&
+            util_1.default.isDeepStrictEqual(this.signatures, other.signatures) &&
+            util_1.default.isDeepStrictEqual(this.unrecognizedFields, other.unrecognizedFields));
+    }
+    toJSON() {
+        const signatures = Object.values(this.signatures).map((signature) => {
+            return signature.toJSON();
+        });
+        return {
+            signatures,
+            signed: this.signed.toJSON(),
+            ...this.unrecognizedFields,
+        };
+    }
+    static fromJSON(type, data) {
+        const { signed, signatures, ...rest } = data;
+        if (!utils_1.guard.isDefined(signed) || !utils_1.guard.isObject(signed)) {
+            throw new TypeError('signed is not defined');
+        }
+        if (type !== signed._type) {
+            throw new error_1.ValueError(`expected '${type}', got ${signed['_type']}`);
+        }
+        if (!utils_1.guard.isObjectArray(signatures)) {
+            throw new TypeError('signatures is not an array');
+        }
+        let signedObj;
+        switch (type) {
+            case base_1.MetadataKind.Root:
+                signedObj = root_1.Root.fromJSON(signed);
+                break;
+            case base_1.MetadataKind.Timestamp:
+                signedObj = timestamp_1.Timestamp.fromJSON(signed);
+                break;
+            case base_1.MetadataKind.Snapshot:
+                signedObj = snapshot_1.Snapshot.fromJSON(signed);
+                break;
+            case base_1.MetadataKind.Targets:
+                signedObj = targets_1.Targets.fromJSON(signed);
+                break;
+            default:
+                throw new TypeError('invalid metadata type');
+        }
+        const sigMap = {};
+        // Ensure that each signature is unique
+        signatures.forEach((sigData) => {
+            const sig = signature_1.Signature.fromJSON(sigData);
+            if (sigMap[sig.keyID]) {
+                throw new error_1.ValueError(`multiple signatures found for keyid: ${sig.keyID}`);
+            }
+            sigMap[sig.keyID] = sig;
+        });
+        return new Metadata(signedObj, sigMap, rest);
+    }
+}
+exports.Metadata = Metadata;
+
+
+/***/ }),
+
+/***/ 5934:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SuccinctRoles = exports.DelegatedRole = exports.Role = exports.TOP_LEVEL_ROLE_NAMES = void 0;
+const crypto_1 = __importDefault(__nccwpck_require__(6982));
+const minimatch_1 = __nccwpck_require__(1956);
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const error_1 = __nccwpck_require__(5494);
+const utils_1 = __nccwpck_require__(846);
+exports.TOP_LEVEL_ROLE_NAMES = [
+    'root',
+    'targets',
+    'snapshot',
+    'timestamp',
+];
+/**
+ * Container that defines which keys are required to sign roles metadata.
+ *
+ * Role defines how many keys are required to successfully sign the roles
+ * metadata, and which keys are accepted.
+ */
+class Role {
+    keyIDs;
+    threshold;
+    unrecognizedFields;
+    constructor(options) {
+        const { keyIDs, threshold, unrecognizedFields } = options;
+        if (hasDuplicates(keyIDs)) {
+            throw new error_1.ValueError('duplicate key IDs found');
+        }
+        if (threshold < 1) {
+            throw new error_1.ValueError('threshold must be at least 1');
+        }
+        this.keyIDs = keyIDs;
+        this.threshold = threshold;
+        this.unrecognizedFields = unrecognizedFields || {};
+    }
+    equals(other) {
+        if (!(other instanceof Role)) {
+            return false;
+        }
+        return (this.threshold === other.threshold &&
+            util_1.default.isDeepStrictEqual(this.keyIDs, other.keyIDs) &&
+            util_1.default.isDeepStrictEqual(this.unrecognizedFields, other.unrecognizedFields));
+    }
+    toJSON() {
+        return {
+            keyids: this.keyIDs,
+            threshold: this.threshold,
+            ...this.unrecognizedFields,
+        };
+    }
+    static fromJSON(data) {
+        const { keyids, threshold, ...rest } = data;
+        if (!utils_1.guard.isStringArray(keyids)) {
+            throw new TypeError('keyids must be an array');
+        }
+        if (typeof threshold !== 'number') {
+            throw new TypeError('threshold must be a number');
+        }
+        return new Role({
+            keyIDs: keyids,
+            threshold,
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.Role = Role;
+function hasDuplicates(array) {
+    return new Set(array).size !== array.length;
+}
+/**
+ * A container with information about a delegated role.
+ *
+ * A delegation can happen in two ways:
+ *   - ``paths`` is set: delegates targets matching any path pattern in ``paths``
+ *   - ``pathHashPrefixes`` is set: delegates targets whose target path hash
+ *      starts with any of the prefixes in ``pathHashPrefixes``
+ *
+ *   ``paths`` and ``pathHashPrefixes`` are mutually exclusive: both cannot be
+ *   set, at least one of them must be set.
+ */
+class DelegatedRole extends Role {
+    name;
+    terminating;
+    paths;
+    pathHashPrefixes;
+    constructor(opts) {
+        super(opts);
+        const { name, terminating, paths, pathHashPrefixes } = opts;
+        this.name = name;
+        this.terminating = terminating;
+        if (opts.paths && opts.pathHashPrefixes) {
+            throw new error_1.ValueError('paths and pathHashPrefixes are mutually exclusive');
+        }
+        this.paths = paths;
+        this.pathHashPrefixes = pathHashPrefixes;
+    }
+    equals(other) {
+        if (!(other instanceof DelegatedRole)) {
+            return false;
+        }
+        return (super.equals(other) &&
+            this.name === other.name &&
+            this.terminating === other.terminating &&
+            util_1.default.isDeepStrictEqual(this.paths, other.paths) &&
+            util_1.default.isDeepStrictEqual(this.pathHashPrefixes, other.pathHashPrefixes));
+    }
+    isDelegatedPath(targetFilepath) {
+        if (this.paths) {
+            return this.paths.some((pathPattern) => isTargetInPathPattern(targetFilepath, pathPattern));
+        }
+        if (this.pathHashPrefixes) {
+            const hasher = crypto_1.default.createHash('sha256');
+            const pathHash = hasher.update(targetFilepath).digest('hex');
+            return this.pathHashPrefixes.some((pathHashPrefix) => pathHash.startsWith(pathHashPrefix));
+        }
+        return false;
+    }
+    toJSON() {
+        const json = {
+            ...super.toJSON(),
+            name: this.name,
+            terminating: this.terminating,
+        };
+        if (this.paths) {
+            json.paths = this.paths;
+        }
+        if (this.pathHashPrefixes) {
+            json.path_hash_prefixes = this.pathHashPrefixes;
+        }
+        return json;
+    }
+    static fromJSON(data) {
+        const { keyids, threshold, name, terminating, paths, path_hash_prefixes, ...rest } = data;
+        if (!utils_1.guard.isStringArray(keyids)) {
+            throw new TypeError('keyids must be an array of strings');
+        }
+        if (typeof threshold !== 'number') {
+            throw new TypeError('threshold must be a number');
+        }
+        if (typeof name !== 'string') {
+            throw new TypeError('name must be a string');
+        }
+        if (typeof terminating !== 'boolean') {
+            throw new TypeError('terminating must be a boolean');
+        }
+        if (utils_1.guard.isDefined(paths) && !utils_1.guard.isStringArray(paths)) {
+            throw new TypeError('paths must be an array of strings');
+        }
+        if (utils_1.guard.isDefined(path_hash_prefixes) &&
+            !utils_1.guard.isStringArray(path_hash_prefixes)) {
+            throw new TypeError('path_hash_prefixes must be an array of strings');
+        }
+        return new DelegatedRole({
+            keyIDs: keyids,
+            threshold,
+            name,
+            terminating,
+            paths,
+            pathHashPrefixes: path_hash_prefixes,
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.DelegatedRole = DelegatedRole;
+// JS version of Ruby's Array#zip
+const zip = (a, b) => a.map((k, i) => [k, b[i]]);
+function isTargetInPathPattern(target, pattern) {
+    const targetParts = target.split('/');
+    const patternParts = pattern.split('/');
+    if (patternParts.length != targetParts.length) {
+        return false;
+    }
+    return zip(targetParts, patternParts).every(([targetPart, patternPart]) => (0, minimatch_1.minimatch)(targetPart, patternPart));
+}
+/**
+ * Succinctly defines a hash bin delegation graph.
+ *
+ * A ``SuccinctRoles`` object describes a delegation graph that covers all
+ * targets, distributing them uniformly over the delegated roles (i.e. bins)
+ * in the graph.
+ *
+ * The total number of bins is 2 to the power of the passed ``bit_length``.
+ *
+ * Bin names are the concatenation of the passed ``name_prefix`` and a
+ * zero-padded hex representation of the bin index separated by a hyphen.
+ *
+ * The passed ``keyids`` and ``threshold`` is used for each bin, and each bin
+ * is 'terminating'.
+ *
+ * For details: https://github.com/theupdateframework/taps/blob/master/tap15.md
+ */
+class SuccinctRoles extends Role {
+    bitLength;
+    namePrefix;
+    numberOfBins;
+    suffixLen;
+    constructor(opts) {
+        super(opts);
+        const { bitLength, namePrefix } = opts;
+        if (bitLength <= 0 || bitLength > 32) {
+            throw new error_1.ValueError('bitLength must be between 1 and 32');
+        }
+        this.bitLength = bitLength;
+        this.namePrefix = namePrefix;
+        // Calculate the suffix_len value based on the total number of bins in
+        // hex. If bit_length = 10 then number_of_bins = 1024 or bin names will
+        // have a suffix between "000" and "3ff" in hex and suffix_len will be 3
+        // meaning the third bin will have a suffix of "003".
+        this.numberOfBins = Math.pow(2, bitLength);
+        // suffix_len is calculated based on "number_of_bins - 1" as the name
+        // of the last bin contains the number "number_of_bins -1" as a suffix.
+        this.suffixLen = (this.numberOfBins - 1).toString(16).length;
+    }
+    equals(other) {
+        if (!(other instanceof SuccinctRoles)) {
+            return false;
+        }
+        return (super.equals(other) &&
+            this.bitLength === other.bitLength &&
+            this.namePrefix === other.namePrefix);
+    }
+    /***
+     * Calculates the name of the delegated role responsible for 'target_filepath'.
+     *
+     * The target at path ''target_filepath' is assigned to a bin by casting
+     * the left-most 'bit_length' of bits of the file path hash digest to
+     * int, using it as bin index between 0 and '2**bit_length - 1'.
+     *
+     * Args:
+     *  target_filepath: URL path to a target file, relative to a base
+     *  targets URL.
+     */
+    getRoleForTarget(targetFilepath) {
+        const hasher = crypto_1.default.createHash('sha256');
+        const hasherBuffer = hasher.update(targetFilepath).digest();
+        // can't ever need more than 4 bytes (32 bits).
+        const hashBytes = hasherBuffer.subarray(0, 4);
+        // Right shift hash bytes, so that we only have the leftmost
+        // bit_length bits that we care about.
+        const shiftValue = 32 - this.bitLength;
+        const binNumber = hashBytes.readUInt32BE() >>> shiftValue;
+        // Add zero padding if necessary and cast to hex the suffix.
+        const suffix = binNumber.toString(16).padStart(this.suffixLen, '0');
+        return `${this.namePrefix}-${suffix}`;
+    }
+    *getRoles() {
+        for (let i = 0; i < this.numberOfBins; i++) {
+            const suffix = i.toString(16).padStart(this.suffixLen, '0');
+            yield `${this.namePrefix}-${suffix}`;
+        }
+    }
+    /***
+     * Determines whether the given ``role_name`` is in one of
+     * the delegated roles that ``SuccinctRoles`` represents.
+     *
+     * Args:
+     *  role_name: The name of the role to check against.
+     */
+    isDelegatedRole(roleName) {
+        const desiredPrefix = this.namePrefix + '-';
+        if (!roleName.startsWith(desiredPrefix)) {
+            return false;
+        }
+        const suffix = roleName.slice(desiredPrefix.length, roleName.length);
+        if (suffix.length != this.suffixLen) {
+            return false;
+        }
+        // make sure the suffix is a hex string
+        if (!suffix.match(/^[0-9a-fA-F]+$/)) {
+            return false;
+        }
+        const num = parseInt(suffix, 16);
+        return 0 <= num && num < this.numberOfBins;
+    }
+    toJSON() {
+        const json = {
+            ...super.toJSON(),
+            bit_length: this.bitLength,
+            name_prefix: this.namePrefix,
+        };
+        return json;
+    }
+    static fromJSON(data) {
+        const { keyids, threshold, bit_length, name_prefix, ...rest } = data;
+        if (!utils_1.guard.isStringArray(keyids)) {
+            throw new TypeError('keyids must be an array of strings');
+        }
+        if (typeof threshold !== 'number') {
+            throw new TypeError('threshold must be a number');
+        }
+        if (typeof bit_length !== 'number') {
+            throw new TypeError('bit_length must be a number');
+        }
+        if (typeof name_prefix !== 'string') {
+            throw new TypeError('name_prefix must be a string');
+        }
+        return new SuccinctRoles({
+            keyIDs: keyids,
+            threshold,
+            bitLength: bit_length,
+            namePrefix: name_prefix,
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.SuccinctRoles = SuccinctRoles;
+
+
+/***/ }),
+
+/***/ 8946:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Root = void 0;
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const base_1 = __nccwpck_require__(8883);
+const error_1 = __nccwpck_require__(5494);
+const key_1 = __nccwpck_require__(3343);
+const role_1 = __nccwpck_require__(5934);
+const utils_1 = __nccwpck_require__(846);
+/**
+ * A container for the signed part of root metadata.
+ *
+ * The top-level role and metadata file signed by the root keys.
+ * This role specifies trusted keys for all other top-level roles, which may further delegate trust.
+ */
+class Root extends base_1.Signed {
+    type = base_1.MetadataKind.Root;
+    keys;
+    roles;
+    consistentSnapshot;
+    constructor(options) {
+        super(options);
+        this.keys = options.keys || {};
+        this.consistentSnapshot = options.consistentSnapshot ?? true;
+        if (!options.roles) {
+            this.roles = role_1.TOP_LEVEL_ROLE_NAMES.reduce((acc, role) => ({
+                ...acc,
+                [role]: new role_1.Role({ keyIDs: [], threshold: 1 }),
+            }), {});
+        }
+        else {
+            const roleNames = new Set(Object.keys(options.roles));
+            if (!role_1.TOP_LEVEL_ROLE_NAMES.every((role) => roleNames.has(role))) {
+                throw new error_1.ValueError('missing top-level role');
+            }
+            this.roles = options.roles;
+        }
+    }
+    addKey(key, role) {
+        if (!this.roles[role]) {
+            throw new error_1.ValueError(`role ${role} does not exist`);
+        }
+        if (!this.roles[role].keyIDs.includes(key.keyID)) {
+            this.roles[role].keyIDs.push(key.keyID);
+        }
+        this.keys[key.keyID] = key;
+    }
+    equals(other) {
+        if (!(other instanceof Root)) {
+            return false;
+        }
+        return (super.equals(other) &&
+            this.consistentSnapshot === other.consistentSnapshot &&
+            util_1.default.isDeepStrictEqual(this.keys, other.keys) &&
+            util_1.default.isDeepStrictEqual(this.roles, other.roles));
+    }
+    toJSON() {
+        return {
+            _type: this.type,
+            spec_version: this.specVersion,
+            version: this.version,
+            expires: this.expires,
+            keys: keysToJSON(this.keys),
+            roles: rolesToJSON(this.roles),
+            consistent_snapshot: this.consistentSnapshot,
+            ...this.unrecognizedFields,
+        };
+    }
+    static fromJSON(data) {
+        const { unrecognizedFields, ...commonFields } = base_1.Signed.commonFieldsFromJSON(data);
+        const { keys, roles, consistent_snapshot, ...rest } = unrecognizedFields;
+        if (typeof consistent_snapshot !== 'boolean') {
+            throw new TypeError('consistent_snapshot must be a boolean');
+        }
+        return new Root({
+            ...commonFields,
+            keys: keysFromJSON(keys),
+            roles: rolesFromJSON(roles),
+            consistentSnapshot: consistent_snapshot,
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.Root = Root;
+function keysToJSON(keys) {
+    return Object.entries(keys).reduce((acc, [keyID, key]) => ({ ...acc, [keyID]: key.toJSON() }), {});
+}
+function rolesToJSON(roles) {
+    return Object.entries(roles).reduce((acc, [roleName, role]) => ({ ...acc, [roleName]: role.toJSON() }), {});
+}
+function keysFromJSON(data) {
+    let keys;
+    if (utils_1.guard.isDefined(data)) {
+        if (!utils_1.guard.isObjectRecord(data)) {
+            throw new TypeError('keys must be an object');
+        }
+        keys = Object.entries(data).reduce((acc, [keyID, keyData]) => ({
+            ...acc,
+            [keyID]: key_1.Key.fromJSON(keyID, keyData),
+        }), {});
+    }
+    return keys;
+}
+function rolesFromJSON(data) {
+    let roles;
+    if (utils_1.guard.isDefined(data)) {
+        if (!utils_1.guard.isObjectRecord(data)) {
+            throw new TypeError('roles must be an object');
+        }
+        roles = Object.entries(data).reduce((acc, [roleName, roleData]) => ({
+            ...acc,
+            [roleName]: role_1.Role.fromJSON(roleData),
+        }), {});
+    }
+    return roles;
+}
+
+
+/***/ }),
+
+/***/ 874:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Signature = void 0;
+/**
+ * A container class containing information about a signature.
+ *
+ * Contains a signature and the keyid uniquely identifying the key used
+ * to generate the signature.
+ *
+ * Provide a `fromJSON` method to create a Signature from a JSON object.
+ */
+class Signature {
+    keyID;
+    sig;
+    constructor(options) {
+        const { keyID, sig } = options;
+        this.keyID = keyID;
+        this.sig = sig;
+    }
+    toJSON() {
+        return {
+            keyid: this.keyID,
+            sig: this.sig,
+        };
+    }
+    static fromJSON(data) {
+        const { keyid, sig } = data;
+        if (typeof keyid !== 'string') {
+            throw new TypeError('keyid must be a string');
+        }
+        if (typeof sig !== 'string') {
+            throw new TypeError('sig must be a string');
+        }
+        return new Signature({
+            keyID: keyid,
+            sig: sig,
+        });
+    }
+}
+exports.Signature = Signature;
+
+
+/***/ }),
+
+/***/ 9386:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Snapshot = void 0;
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const base_1 = __nccwpck_require__(8883);
+const file_1 = __nccwpck_require__(6708);
+const utils_1 = __nccwpck_require__(846);
+/**
+ * A container for the signed part of snapshot metadata.
+ *
+ * Snapshot contains information about all target Metadata files.
+ * A top-level role that specifies the latest versions of all targets metadata files,
+ * and hence the latest versions of all targets (including any dependencies between them) on the repository.
+ */
+class Snapshot extends base_1.Signed {
+    type = base_1.MetadataKind.Snapshot;
+    meta;
+    constructor(opts) {
+        super(opts);
+        this.meta = opts.meta || { 'targets.json': new file_1.MetaFile({ version: 1 }) };
+    }
+    equals(other) {
+        if (!(other instanceof Snapshot)) {
+            return false;
+        }
+        return super.equals(other) && util_1.default.isDeepStrictEqual(this.meta, other.meta);
+    }
+    toJSON() {
+        return {
+            _type: this.type,
+            meta: metaToJSON(this.meta),
+            spec_version: this.specVersion,
+            version: this.version,
+            expires: this.expires,
+            ...this.unrecognizedFields,
+        };
+    }
+    static fromJSON(data) {
+        const { unrecognizedFields, ...commonFields } = base_1.Signed.commonFieldsFromJSON(data);
+        const { meta, ...rest } = unrecognizedFields;
+        return new Snapshot({
+            ...commonFields,
+            meta: metaFromJSON(meta),
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.Snapshot = Snapshot;
+function metaToJSON(meta) {
+    return Object.entries(meta).reduce((acc, [path, metadata]) => ({
+        ...acc,
+        [path]: metadata.toJSON(),
+    }), {});
+}
+function metaFromJSON(data) {
+    let meta;
+    if (utils_1.guard.isDefined(data)) {
+        if (!utils_1.guard.isObjectRecord(data)) {
+            throw new TypeError('meta field is malformed');
+        }
+        else {
+            meta = Object.entries(data).reduce((acc, [path, metadata]) => ({
+                ...acc,
+                [path]: file_1.MetaFile.fromJSON(metadata),
+            }), {});
+        }
+    }
+    return meta;
+}
+
+
+/***/ }),
+
+/***/ 6150:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Targets = void 0;
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const base_1 = __nccwpck_require__(8883);
+const delegations_1 = __nccwpck_require__(4727);
+const file_1 = __nccwpck_require__(6708);
+const utils_1 = __nccwpck_require__(846);
+// Container for the signed part of targets metadata.
+//
+// Targets contains verifying information about target files and also delegates
+// responsible to other Targets roles.
+class Targets extends base_1.Signed {
+    type = base_1.MetadataKind.Targets;
+    targets;
+    delegations;
+    constructor(options) {
+        super(options);
+        this.targets = options.targets || {};
+        this.delegations = options.delegations;
+    }
+    addTarget(target) {
+        this.targets[target.path] = target;
+    }
+    equals(other) {
+        if (!(other instanceof Targets)) {
+            return false;
+        }
+        return (super.equals(other) &&
+            util_1.default.isDeepStrictEqual(this.targets, other.targets) &&
+            util_1.default.isDeepStrictEqual(this.delegations, other.delegations));
+    }
+    toJSON() {
+        const json = {
+            _type: this.type,
+            spec_version: this.specVersion,
+            version: this.version,
+            expires: this.expires,
+            targets: targetsToJSON(this.targets),
+            ...this.unrecognizedFields,
+        };
+        if (this.delegations) {
+            json.delegations = this.delegations.toJSON();
+        }
+        return json;
+    }
+    static fromJSON(data) {
+        const { unrecognizedFields, ...commonFields } = base_1.Signed.commonFieldsFromJSON(data);
+        const { targets, delegations, ...rest } = unrecognizedFields;
+        return new Targets({
+            ...commonFields,
+            targets: targetsFromJSON(targets),
+            delegations: delegationsFromJSON(delegations),
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.Targets = Targets;
+function targetsToJSON(targets) {
+    return Object.entries(targets).reduce((acc, [path, target]) => ({
+        ...acc,
+        [path]: target.toJSON(),
+    }), {});
+}
+function targetsFromJSON(data) {
+    let targets;
+    if (utils_1.guard.isDefined(data)) {
+        if (!utils_1.guard.isObjectRecord(data)) {
+            throw new TypeError('targets must be an object');
+        }
+        else {
+            targets = Object.entries(data).reduce((acc, [path, target]) => ({
+                ...acc,
+                [path]: file_1.TargetFile.fromJSON(path, target),
+            }), {});
+        }
+    }
+    return targets;
+}
+function delegationsFromJSON(data) {
+    let delegations;
+    if (utils_1.guard.isDefined(data)) {
+        if (!utils_1.guard.isObject(data)) {
+            throw new TypeError('delegations must be an object');
+        }
+        else {
+            delegations = delegations_1.Delegations.fromJSON(data);
+        }
+    }
+    return delegations;
+}
+
+
+/***/ }),
+
+/***/ 1796:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Timestamp = void 0;
+const base_1 = __nccwpck_require__(8883);
+const file_1 = __nccwpck_require__(6708);
+const utils_1 = __nccwpck_require__(846);
+/**
+ * A container for the signed part of timestamp metadata.
+ *
+ * A top-level that specifies the latest version of the snapshot role metadata file,
+ * and hence the latest versions of all metadata and targets on the repository.
+ */
+class Timestamp extends base_1.Signed {
+    type = base_1.MetadataKind.Timestamp;
+    snapshotMeta;
+    constructor(options) {
+        super(options);
+        this.snapshotMeta = options.snapshotMeta || new file_1.MetaFile({ version: 1 });
+    }
+    equals(other) {
+        if (!(other instanceof Timestamp)) {
+            return false;
+        }
+        return super.equals(other) && this.snapshotMeta.equals(other.snapshotMeta);
+    }
+    toJSON() {
+        return {
+            _type: this.type,
+            spec_version: this.specVersion,
+            version: this.version,
+            expires: this.expires,
+            meta: { 'snapshot.json': this.snapshotMeta.toJSON() },
+            ...this.unrecognizedFields,
+        };
+    }
+    static fromJSON(data) {
+        const { unrecognizedFields, ...commonFields } = base_1.Signed.commonFieldsFromJSON(data);
+        const { meta, ...rest } = unrecognizedFields;
+        return new Timestamp({
+            ...commonFields,
+            snapshotMeta: snapshotMetaFromJSON(meta),
+            unrecognizedFields: rest,
+        });
+    }
+}
+exports.Timestamp = Timestamp;
+function snapshotMetaFromJSON(data) {
+    let snapshotMeta;
+    if (utils_1.guard.isDefined(data)) {
+        const snapshotData = data['snapshot.json'];
+        if (!utils_1.guard.isDefined(snapshotData) || !utils_1.guard.isObject(snapshotData)) {
+            throw new TypeError('missing snapshot.json in meta');
+        }
+        else {
+            snapshotMeta = file_1.MetaFile.fromJSON(snapshotData);
+        }
+    }
+    return snapshotMeta;
+}
+
+
+/***/ }),
+
+/***/ 7915:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isDefined = isDefined;
+exports.isObject = isObject;
+exports.isStringArray = isStringArray;
+exports.isObjectArray = isObjectArray;
+exports.isStringRecord = isStringRecord;
+exports.isObjectRecord = isObjectRecord;
+function isDefined(val) {
+    return val !== undefined;
+}
+function isObject(value) {
+    return typeof value === 'object' && value !== null;
+}
+function isStringArray(value) {
+    return Array.isArray(value) && value.every((v) => typeof v === 'string');
+}
+function isObjectArray(value) {
+    return Array.isArray(value) && value.every(isObject);
+}
+function isStringRecord(value) {
+    return (typeof value === 'object' &&
+        value !== null &&
+        Object.keys(value).every((k) => typeof k === 'string') &&
+        Object.values(value).every((v) => typeof v === 'string'));
+}
+function isObjectRecord(value) {
+    return (typeof value === 'object' &&
+        value !== null &&
+        Object.keys(value).every((k) => typeof k === 'string') &&
+        Object.values(value).every((v) => typeof v === 'object' && v !== null));
+}
+
+
+/***/ }),
+
+/***/ 846:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.crypto = exports.guard = void 0;
+exports.guard = __importStar(__nccwpck_require__(7915));
+exports.crypto = __importStar(__nccwpck_require__(4405));
+
+
+/***/ }),
+
+/***/ 6361:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getPublicKey = getPublicKey;
+const crypto_1 = __importDefault(__nccwpck_require__(6982));
+const error_1 = __nccwpck_require__(5494);
+const oid_1 = __nccwpck_require__(334);
+const ASN1_TAG_SEQUENCE = 0x30;
+const ANS1_TAG_BIT_STRING = 0x03;
+const NULL_BYTE = 0x00;
+const OID_EDDSA = '1.3.101.112';
+const OID_EC_PUBLIC_KEY = '1.2.840.10045.2.1';
+const OID_EC_CURVE_P256V1 = '1.2.840.10045.3.1.7';
+const OID_EC_CURVE_P384 = '1.3.132.0.34';
+const PEM_HEADER = '-----BEGIN PUBLIC KEY-----';
+function getPublicKey(keyInfo) {
+    switch (keyInfo.keyType) {
+        case 'rsa':
+            return getRSAPublicKey(keyInfo);
+        case 'ed25519':
+            return getED25519PublicKey(keyInfo);
+        case 'ecdsa':
+        case 'ecdsa-sha2-nistp256':
+        case 'ecdsa-sha2-nistp384':
+            return getECDCSAPublicKey(keyInfo);
+        default:
+            throw new error_1.UnsupportedAlgorithmError(`Unsupported key type: ${keyInfo.keyType}`);
+    }
+}
+function getRSAPublicKey(keyInfo) {
+    // Only support PEM-encoded RSA keys
+    if (!keyInfo.keyVal.startsWith(PEM_HEADER)) {
+        throw new error_1.CryptoError('Invalid key format');
+    }
+    const key = crypto_1.default.createPublicKey(keyInfo.keyVal);
+    switch (keyInfo.scheme) {
+        case 'rsassa-pss-sha256':
+        case 'rsassa-pss-sha384':
+        case 'rsassa-pss-sha512':
+            return {
+                key: key,
+                hashAlgorithm: keyInfo.scheme.slice('rsassa-pss-'.length),
+                padding: crypto_1.default.constants.RSA_PKCS1_PSS_PADDING,
+            };
+        default:
+            throw new error_1.UnsupportedAlgorithmError(`Unsupported RSA scheme: ${keyInfo.scheme}`);
+    }
+}
+function getED25519PublicKey(keyInfo) {
+    let key;
+    // If key is already PEM-encoded we can just parse it
+    if (keyInfo.keyVal.startsWith(PEM_HEADER)) {
+        key = crypto_1.default.createPublicKey(keyInfo.keyVal);
+    }
+    else {
+        // If key is not PEM-encoded it had better be hex
+        if (!isHex(keyInfo.keyVal)) {
+            throw new error_1.CryptoError('Invalid key format');
+        }
+        key = crypto_1.default.createPublicKey({
+            key: ed25519.hexToDER(keyInfo.keyVal),
+            format: 'der',
+            type: 'spki',
+        });
+    }
+    return { key };
+}
+function getECDCSAPublicKey(keyInfo) {
+    let namedCurve;
+    let curveOID;
+    let hashAlgorithm;
+    switch (keyInfo.scheme) {
+        case 'ecdsa-sha2-nistp256':
+            namedCurve = 'prime256v1';
+            curveOID = OID_EC_CURVE_P256V1;
+            hashAlgorithm = 'sha256';
+            break;
+        case 'ecdsa-sha2-nistp384':
+            namedCurve = 'secp384r1';
+            curveOID = OID_EC_CURVE_P384;
+            hashAlgorithm = 'sha384';
+            break;
+        default:
+            throw new error_1.UnsupportedAlgorithmError(`Unsupported ECDSA scheme: ${keyInfo.scheme}`);
+    }
+    if (keyInfo.keyType !== 'ecdsa' && keyInfo.keyType !== keyInfo.scheme) {
+        throw new error_1.CryptoError('ECDSA key type does not match scheme');
+    }
+    let key;
+    // If key is already PEM-encoded we can just parse it
+    if (keyInfo.keyVal.startsWith(PEM_HEADER)) {
+        key = crypto_1.default.createPublicKey(keyInfo.keyVal);
+    }
+    else {
+        // If key is not PEM-encoded it had better be hex
+        if (!isHex(keyInfo.keyVal)) {
+            throw new error_1.CryptoError('Invalid key format');
+        }
+        key = crypto_1.default.createPublicKey({
+            key: ecdsa.hexToDER(keyInfo.keyVal, curveOID),
+            format: 'der',
+            type: 'spki',
+        });
+    }
+    if (key.asymmetricKeyType !== 'ec' ||
+        key.asymmetricKeyDetails?.namedCurve !== namedCurve) {
+        throw new error_1.CryptoError('ECDSA key curve does not match scheme');
+    }
+    return { key, hashAlgorithm };
+}
+const ed25519 = {
+    // Translates a hex key into a crypto KeyObject
+    // https://keygen.sh/blog/how-to-use-hexadecimal-ed25519-keys-in-node/
+    hexToDER: (hex) => {
+        const key = Buffer.from(hex, 'hex');
+        const oid = (0, oid_1.encodeOIDString)(OID_EDDSA);
+        // Create a byte sequence containing the OID and key
+        const elements = Buffer.concat([
+            Buffer.concat([
+                Buffer.from([ASN1_TAG_SEQUENCE]),
+                Buffer.from([oid.length]),
+                oid,
+            ]),
+            Buffer.concat([
+                Buffer.from([ANS1_TAG_BIT_STRING]),
+                Buffer.from([key.length + 1]),
+                Buffer.from([NULL_BYTE]),
+                key,
+            ]),
+        ]);
+        // Wrap up by creating a sequence of elements
+        const der = Buffer.concat([
+            Buffer.from([ASN1_TAG_SEQUENCE]),
+            Buffer.from([elements.length]),
+            elements,
+        ]);
+        return der;
+    },
+};
+const ecdsa = {
+    hexToDER: (hex, curveOID) => {
+        const key = Buffer.from(hex, 'hex');
+        const bitString = Buffer.concat([
+            Buffer.from([ANS1_TAG_BIT_STRING]),
+            Buffer.from([key.length + 1]),
+            Buffer.from([NULL_BYTE]),
+            key,
+        ]);
+        const oids = Buffer.concat([
+            (0, oid_1.encodeOIDString)(OID_EC_PUBLIC_KEY),
+            (0, oid_1.encodeOIDString)(curveOID),
+        ]);
+        const oidSequence = Buffer.concat([
+            Buffer.from([ASN1_TAG_SEQUENCE]),
+            Buffer.from([oids.length]),
+            oids,
+        ]);
+        // Wrap up by creating a sequence of elements
+        const der = Buffer.concat([
+            Buffer.from([ASN1_TAG_SEQUENCE]),
+            Buffer.from([oidSequence.length + bitString.length]),
+            oidSequence,
+            bitString,
+        ]);
+        return der;
+    },
+};
+const isHex = (key) => /^[0-9a-fA-F]+$/.test(key);
+
+
+/***/ }),
+
+/***/ 334:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.encodeOIDString = encodeOIDString;
+const ANS1_TAG_OID = 0x06;
+function encodeOIDString(oid) {
+    const parts = oid.split('.');
+    // The first two subidentifiers are encoded into the first byte
+    const first = parseInt(parts[0], 10) * 40 + parseInt(parts[1], 10);
+    const rest = [];
+    parts.slice(2).forEach((part) => {
+        const bytes = encodeVariableLengthInteger(parseInt(part, 10));
+        rest.push(...bytes);
+    });
+    const der = Buffer.from([first, ...rest]);
+    return Buffer.from([ANS1_TAG_OID, der.length, ...der]);
+}
+function encodeVariableLengthInteger(value) {
+    const bytes = [];
+    let mask = 0x00;
+    do {
+        bytes.unshift((value & 0x7f) | mask);
+        value >>= 7;
+        mask = 0x80;
+    } while (value > 0);
+    return bytes;
+}
+
+
+/***/ }),
+
+/***/ 4405:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.verifySignature = void 0;
+const canonical_json_1 = __nccwpck_require__(5178);
+const crypto_1 = __importDefault(__nccwpck_require__(6982));
+const verifySignature = (metaDataSignedData, key, signature) => {
+    const canonicalData = Buffer.from((0, canonical_json_1.canonicalize)(metaDataSignedData));
+    return crypto_1.default.verify(key.hashAlgorithm, canonicalData, key, Buffer.from(signature, 'hex'));
+};
+exports.verifySignature = verifySignature;
+
+
+/***/ }),
+
 /***/ 6110:
 /***/ ((module, exports, __nccwpck_require__) => {
 
@@ -13790,6 +22321,903 @@ module.exports = {
 	stdout: translateLevel(supportsColor(true, tty.isatty(1))),
 	stderr: translateLevel(supportsColor(true, tty.isatty(2)))
 };
+
+
+/***/ }),
+
+/***/ 2730:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.defaultConfig = void 0;
+exports.defaultConfig = {
+    maxRootRotations: 256,
+    maxDelegations: 32,
+    rootMaxLength: 512000, //bytes
+    timestampMaxLength: 16384, // bytes
+    snapshotMaxLength: 2000000, // bytes
+    targetsMaxLength: 5000000, // bytes
+    prefixTargetsWithHash: true,
+    fetchTimeout: 100000, // milliseconds
+    fetchRetries: undefined,
+    fetchRetry: 2,
+    userAgent: '',
+};
+
+
+/***/ }),
+
+/***/ 6376:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DownloadHTTPError = exports.DownloadLengthMismatchError = exports.DownloadError = exports.ExpiredMetadataError = exports.EqualVersionError = exports.BadVersionError = exports.RepositoryError = exports.PersistError = exports.RuntimeError = exports.ValueError = void 0;
+// An error about insufficient values
+class ValueError extends Error {
+}
+exports.ValueError = ValueError;
+class RuntimeError extends Error {
+}
+exports.RuntimeError = RuntimeError;
+class PersistError extends Error {
+}
+exports.PersistError = PersistError;
+// An error with a repository's state, such as a missing file.
+// It covers all exceptions that come from the repository side when
+// looking from the perspective of users of metadata API or ngclient.
+class RepositoryError extends Error {
+}
+exports.RepositoryError = RepositoryError;
+// An error for metadata that contains an invalid version number.
+class BadVersionError extends RepositoryError {
+}
+exports.BadVersionError = BadVersionError;
+// An error for metadata containing a previously verified version number.
+class EqualVersionError extends BadVersionError {
+}
+exports.EqualVersionError = EqualVersionError;
+// Indicate that a TUF Metadata file has expired.
+class ExpiredMetadataError extends RepositoryError {
+}
+exports.ExpiredMetadataError = ExpiredMetadataError;
+//----- Download Errors -------------------------------------------------------
+// An error occurred while attempting to download a file.
+class DownloadError extends Error {
+}
+exports.DownloadError = DownloadError;
+// Indicate that a mismatch of lengths was seen while downloading a file
+class DownloadLengthMismatchError extends DownloadError {
+}
+exports.DownloadLengthMismatchError = DownloadLengthMismatchError;
+// Returned by FetcherInterface implementations for HTTP errors.
+class DownloadHTTPError extends DownloadError {
+    statusCode;
+    constructor(message, statusCode) {
+        super(message);
+        this.statusCode = statusCode;
+    }
+}
+exports.DownloadHTTPError = DownloadHTTPError;
+
+
+/***/ }),
+
+/***/ 6337:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DefaultFetcher = exports.BaseFetcher = void 0;
+const debug_1 = __importDefault(__nccwpck_require__(2830));
+const fs_1 = __importDefault(__nccwpck_require__(9896));
+const util_1 = __importDefault(__nccwpck_require__(9023));
+const error_1 = __nccwpck_require__(6376);
+const tmpfile_1 = __nccwpck_require__(4611);
+const promise_retry_1 = __nccwpck_require__(9498);
+const log = (0, debug_1.default)('tuf:fetch');
+const USER_AGENT_HEADER = 'User-Agent';
+class BaseFetcher {
+    // Download file from given URL. The file is downloaded to a temporary
+    // location and then passed to the given handler. The handler is responsible
+    // for moving the file to its final location. The temporary file is deleted
+    // after the handler returns.
+    async downloadFile(url, maxLength, handler) {
+        return (0, tmpfile_1.withTempFile)(async (tmpFile) => {
+            const reader = await this.fetch(url);
+            let numberOfBytesReceived = 0;
+            const fileStream = fs_1.default.createWriteStream(tmpFile);
+            // Read the stream a chunk at a time so that we can check
+            // the length of the file as we go
+            const streamReader = reader.getReader();
+            try {
+                while (true) {
+                    const { done, value: chunk } = await streamReader.read();
+                    if (done) {
+                        break;
+                    }
+                    numberOfBytesReceived += chunk.length;
+                    if (numberOfBytesReceived > maxLength) {
+                        throw new error_1.DownloadLengthMismatchError('Max length reached');
+                    }
+                    await writeBufferToStream(fileStream, Buffer.from(chunk));
+                }
+            }
+            finally {
+                streamReader.releaseLock();
+                // Make sure we always close the stream
+                // eslint-disable-next-line @typescript-eslint/unbound-method
+                await util_1.default.promisify(fileStream.close).bind(fileStream)();
+            }
+            return handler(tmpFile);
+        });
+    }
+    // Download bytes from given URL.
+    async downloadBytes(url, maxLength) {
+        return this.downloadFile(url, maxLength, async (file) => {
+            const stream = fs_1.default.createReadStream(file);
+            const chunks = [];
+            for await (const chunk of stream) {
+                chunks.push(chunk);
+            }
+            return Buffer.concat(chunks);
+        });
+    }
+}
+exports.BaseFetcher = BaseFetcher;
+class DefaultFetcher extends BaseFetcher {
+    userAgent;
+    timeout;
+    retry;
+    constructor(options = {}) {
+        super();
+        this.userAgent = options.userAgent;
+        this.timeout = options.timeout;
+        // Map retry to OperationOptions
+        if (options.retry === true) {
+            this.retry = { forever: true };
+        }
+        else if (options.retry === false || options.retry === undefined) {
+            this.retry = undefined;
+        }
+        else if (typeof options.retry === 'number') {
+            if (options.retry < 0) {
+                throw new Error('Retry count must be non-negative number');
+            }
+            this.retry = { retries: options.retry };
+        }
+        else {
+            this.retry = options.retry;
+        }
+    }
+    async fetch(url) {
+        const shouldRetry = this.retry !== undefined;
+        return (0, promise_retry_1.promiseRetry)(async (retry, number) => {
+            log('GET %s (attempt %d)', url, number);
+            let response;
+            try {
+                response = await fetch(url, {
+                    headers: {
+                        [USER_AGENT_HEADER]: this.userAgent || '',
+                    },
+                    signal: this.timeout
+                        ? AbortSignal.timeout(this.timeout)
+                        : undefined,
+                });
+            }
+            catch (error) {
+                const err = error instanceof Error ? error : new Error(String(error));
+                if (shouldRetry) {
+                    return retry(err);
+                }
+                throw err;
+            }
+            if (!response.ok || !response.body) {
+                const err = new error_1.DownloadHTTPError('Failed to download', response.status);
+                if (shouldRetry && response.status >= 500 && response.status < 600) {
+                    return retry(err);
+                }
+                throw err;
+            }
+            return response.body;
+        }, this.retry);
+    }
+}
+exports.DefaultFetcher = DefaultFetcher;
+const writeBufferToStream = async (stream, buffer) => {
+    return new Promise((resolve, reject) => {
+        stream.write(buffer, (err) => {
+            if (err) {
+                reject(err);
+            }
+            resolve(true);
+        });
+    });
+};
+
+
+/***/ }),
+
+/***/ 4706:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Updater = exports.BaseFetcher = exports.TargetFile = void 0;
+var models_1 = __nccwpck_require__(8908);
+Object.defineProperty(exports, "TargetFile", ({ enumerable: true, get: function () { return models_1.TargetFile; } }));
+var fetcher_1 = __nccwpck_require__(6337);
+Object.defineProperty(exports, "BaseFetcher", ({ enumerable: true, get: function () { return fetcher_1.BaseFetcher; } }));
+var updater_1 = __nccwpck_require__(6903);
+Object.defineProperty(exports, "Updater", ({ enumerable: true, get: function () { return updater_1.Updater; } }));
+
+
+/***/ }),
+
+/***/ 5683:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.TrustedMetadataStore = void 0;
+const models_1 = __nccwpck_require__(8908);
+const error_1 = __nccwpck_require__(6376);
+class TrustedMetadataStore {
+    trustedSet = {};
+    referenceTime;
+    constructor(rootData) {
+        // Client workflow 5.1: record fixed update start time
+        this.referenceTime = new Date();
+        // Client workflow 5.2: load trusted root metadata
+        this.loadTrustedRoot(rootData);
+    }
+    get root() {
+        if (!this.trustedSet.root) {
+            throw new ReferenceError('No trusted root metadata');
+        }
+        return this.trustedSet.root;
+    }
+    get timestamp() {
+        return this.trustedSet.timestamp;
+    }
+    get snapshot() {
+        return this.trustedSet.snapshot;
+    }
+    get targets() {
+        return this.trustedSet.targets;
+    }
+    getRole(name) {
+        return this.trustedSet[name];
+    }
+    updateRoot(bytesBuffer) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const data = JSON.parse(bytesBuffer.toString('utf8'));
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        const newRoot = models_1.Metadata.fromJSON(models_1.MetadataKind.Root, data);
+        if (newRoot.signed.type != models_1.MetadataKind.Root) {
+            throw new error_1.RepositoryError(`Expected 'root', got ${newRoot.signed.type}`);
+        }
+        // Client workflow 5.4: check for arbitrary software attack
+        this.root.verifyDelegate(models_1.MetadataKind.Root, newRoot);
+        // Client workflow 5.5: check for rollback attack
+        if (newRoot.signed.version != this.root.signed.version + 1) {
+            throw new error_1.BadVersionError(`Expected version ${this.root.signed.version + 1}, got ${newRoot.signed.version}`);
+        }
+        // Check that new root is signed by self
+        newRoot.verifyDelegate(models_1.MetadataKind.Root, newRoot);
+        // Client workflow 5.7: set new root as trusted root
+        this.trustedSet.root = newRoot;
+        return newRoot;
+    }
+    updateTimestamp(bytesBuffer) {
+        if (this.snapshot) {
+            throw new error_1.RuntimeError('Cannot update timestamp after snapshot');
+        }
+        if (this.root.signed.isExpired(this.referenceTime)) {
+            throw new error_1.ExpiredMetadataError('Final root.json is expired');
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const data = JSON.parse(bytesBuffer.toString('utf8'));
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        const newTimestamp = models_1.Metadata.fromJSON(models_1.MetadataKind.Timestamp, data);
+        if (newTimestamp.signed.type != models_1.MetadataKind.Timestamp) {
+            throw new error_1.RepositoryError(`Expected 'timestamp', got ${newTimestamp.signed.type}`);
+        }
+        // Client workflow 5.4.2: check for arbitrary software attack
+        this.root.verifyDelegate(models_1.MetadataKind.Timestamp, newTimestamp);
+        if (this.timestamp) {
+            // Prevent rolling back timestamp version
+            // Client workflow 5.4.3.1: check for rollback attack
+            if (newTimestamp.signed.version < this.timestamp.signed.version) {
+                throw new error_1.BadVersionError(`New timestamp version ${newTimestamp.signed.version} is less than current version ${this.timestamp.signed.version}`);
+            }
+            //  Keep using old timestamp if versions are equal.
+            if (newTimestamp.signed.version === this.timestamp.signed.version) {
+                throw new error_1.EqualVersionError(`New timestamp version ${newTimestamp.signed.version} is equal to current version ${this.timestamp.signed.version}`);
+            }
+            // Prevent rolling back snapshot version
+            // Client workflow 5.4.3.2: check for rollback attack
+            const snapshotMeta = this.timestamp.signed.snapshotMeta;
+            const newSnapshotMeta = newTimestamp.signed.snapshotMeta;
+            if (newSnapshotMeta.version < snapshotMeta.version) {
+                throw new error_1.BadVersionError(`New snapshot version ${newSnapshotMeta.version} is less than current version ${snapshotMeta.version}`);
+            }
+        }
+        // expiry not checked to allow old timestamp to be used for rollback
+        // protection of new timestamp: expiry is checked in update_snapshot
+        this.trustedSet.timestamp = newTimestamp;
+        // Client workflow 5.4.4: check for freeze attack
+        this.checkFinalTimestamp();
+        return newTimestamp;
+    }
+    updateSnapshot(bytesBuffer, trusted = false) {
+        if (!this.timestamp) {
+            throw new error_1.RuntimeError('Cannot update snapshot before timestamp');
+        }
+        if (this.targets) {
+            throw new error_1.RuntimeError('Cannot update snapshot after targets');
+        }
+        // Snapshot cannot be loaded if final timestamp is expired
+        this.checkFinalTimestamp();
+        const snapshotMeta = this.timestamp.signed.snapshotMeta;
+        // Verify non-trusted data against the hashes in timestamp, if any.
+        // Trusted snapshot data has already been verified once.
+        // Client workflow 5.5.2: check against timestamp role's snaphsot hash
+        if (!trusted) {
+            snapshotMeta.verify(bytesBuffer);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const data = JSON.parse(bytesBuffer.toString('utf8'));
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        const newSnapshot = models_1.Metadata.fromJSON(models_1.MetadataKind.Snapshot, data);
+        if (newSnapshot.signed.type != models_1.MetadataKind.Snapshot) {
+            throw new error_1.RepositoryError(`Expected 'snapshot', got ${newSnapshot.signed.type}`);
+        }
+        // Client workflow 5.5.3: check for arbitrary software attack
+        this.root.verifyDelegate(models_1.MetadataKind.Snapshot, newSnapshot);
+        // version check against meta version (5.5.4) is deferred to allow old
+        // snapshot to be used in rollback protection
+        // Client workflow 5.5.5: check for rollback attack
+        if (this.snapshot) {
+            Object.entries(this.snapshot.signed.meta).forEach(([fileName, fileInfo]) => {
+                const newFileInfo = newSnapshot.signed.meta[fileName];
+                if (!newFileInfo) {
+                    throw new error_1.RepositoryError(`Missing file ${fileName} in new snapshot`);
+                }
+                if (newFileInfo.version < fileInfo.version) {
+                    throw new error_1.BadVersionError(`New version ${newFileInfo.version} of ${fileName} is less than current version ${fileInfo.version}`);
+                }
+            });
+        }
+        this.trustedSet.snapshot = newSnapshot;
+        // snapshot is loaded, but we raise if it's not valid _final_ snapshot
+        // Client workflow 5.5.4 & 5.5.6
+        this.checkFinalSnapsnot();
+        return newSnapshot;
+    }
+    updateDelegatedTargets(bytesBuffer, roleName, delegatorName) {
+        if (!this.snapshot) {
+            throw new error_1.RuntimeError('Cannot update delegated targets before snapshot');
+        }
+        // Targets cannot be loaded if final snapshot is expired or its version
+        // does not match meta version in timestamp.
+        this.checkFinalSnapsnot();
+        const delegator = this.trustedSet[delegatorName];
+        if (!delegator) {
+            throw new error_1.RuntimeError(`No trusted ${delegatorName} metadata`);
+        }
+        // Extract metadata for the delegated role from snapshot
+        const meta = this.snapshot.signed.meta?.[`${roleName}.json`];
+        if (!meta) {
+            throw new error_1.RepositoryError(`Missing ${roleName}.json in snapshot`);
+        }
+        // Client workflow 5.6.2: check against snapshot role's targets hash
+        meta.verify(bytesBuffer);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const data = JSON.parse(bytesBuffer.toString('utf8'));
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        const newDelegate = models_1.Metadata.fromJSON(models_1.MetadataKind.Targets, data);
+        if (newDelegate.signed.type != models_1.MetadataKind.Targets) {
+            throw new error_1.RepositoryError(`Expected 'targets', got ${newDelegate.signed.type}`);
+        }
+        // Client workflow 5.6.3: check for arbitrary software attack
+        delegator.verifyDelegate(roleName, newDelegate);
+        // Client workflow 5.6.4: Check against snapshot role’s targets version
+        const version = newDelegate.signed.version;
+        if (version != meta.version) {
+            throw new error_1.BadVersionError(`Version ${version} of ${roleName} does not match snapshot version ${meta.version}`);
+        }
+        // Client workflow 5.6.5: check for a freeze attack
+        if (newDelegate.signed.isExpired(this.referenceTime)) {
+            throw new error_1.ExpiredMetadataError(`${roleName}.json is expired`);
+        }
+        this.trustedSet[roleName] = newDelegate;
+    }
+    // Verifies and loads data as trusted root metadata.
+    // Note that an expired initial root is still considered valid.
+    loadTrustedRoot(bytesBuffer) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const data = JSON.parse(bytesBuffer.toString('utf8'));
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        const root = models_1.Metadata.fromJSON(models_1.MetadataKind.Root, data);
+        if (root.signed.type != models_1.MetadataKind.Root) {
+            throw new error_1.RepositoryError(`Expected 'root', got ${root.signed.type}`);
+        }
+        root.verifyDelegate(models_1.MetadataKind.Root, root);
+        this.trustedSet['root'] = root;
+    }
+    checkFinalTimestamp() {
+        // Timestamp MUST be loaded
+        if (!this.timestamp) {
+            throw new ReferenceError('No trusted timestamp metadata');
+        }
+        // Client workflow 5.4.4: check for freeze attack
+        if (this.timestamp.signed.isExpired(this.referenceTime)) {
+            throw new error_1.ExpiredMetadataError('Final timestamp.json is expired');
+        }
+    }
+    checkFinalSnapsnot() {
+        // Snapshot and timestamp MUST be loaded
+        if (!this.snapshot) {
+            throw new ReferenceError('No trusted snapshot metadata');
+        }
+        if (!this.timestamp) {
+            throw new ReferenceError('No trusted timestamp metadata');
+        }
+        // Client workflow 5.5.6: check for freeze attack
+        if (this.snapshot.signed.isExpired(this.referenceTime)) {
+            throw new error_1.ExpiredMetadataError('snapshot.json is expired');
+        }
+        // Client workflow 5.5.4: check against timestamp role’s snapshot version
+        const snapshotMeta = this.timestamp.signed.snapshotMeta;
+        if (this.snapshot.signed.version !== snapshotMeta.version) {
+            throw new error_1.BadVersionError("Snapshot version doesn't match timestamp");
+        }
+    }
+}
+exports.TrustedMetadataStore = TrustedMetadataStore;
+
+
+/***/ }),
+
+/***/ 6903:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Updater = void 0;
+const models_1 = __nccwpck_require__(8908);
+const debug_1 = __importDefault(__nccwpck_require__(2830));
+const fs = __importStar(__nccwpck_require__(9896));
+const path = __importStar(__nccwpck_require__(6928));
+const package_json_1 = __nccwpck_require__(7523);
+const config_1 = __nccwpck_require__(2730);
+const error_1 = __nccwpck_require__(6376);
+const fetcher_1 = __nccwpck_require__(6337);
+const store_1 = __nccwpck_require__(5683);
+const url = __importStar(__nccwpck_require__(6469));
+const log = (0, debug_1.default)('tuf:cache');
+class Updater {
+    dir;
+    metadataBaseUrl;
+    targetDir;
+    targetBaseUrl;
+    forceCache;
+    trustedSet;
+    config;
+    fetcher;
+    constructor(options) {
+        const { metadataDir, metadataBaseUrl, targetDir, targetBaseUrl, fetcher, config, } = options;
+        this.dir = metadataDir;
+        this.metadataBaseUrl = metadataBaseUrl;
+        this.targetDir = targetDir;
+        this.targetBaseUrl = targetBaseUrl;
+        this.forceCache = options.forceCache ?? false;
+        const data = this.loadLocalMetadata(models_1.MetadataKind.Root);
+        this.trustedSet = new store_1.TrustedMetadataStore(data);
+        this.config = { ...config_1.defaultConfig, ...config };
+        const userAgent = config?.userAgent
+            ? `${config.userAgent} tuf-js/${package_json_1.version}`
+            : `tuf-js/${package_json_1.version}`;
+        this.fetcher =
+            fetcher ||
+                new fetcher_1.DefaultFetcher({
+                    userAgent,
+                    timeout: this.config.fetchTimeout,
+                    retry: this.config.fetchRetries ?? this.config.fetchRetry,
+                });
+    }
+    // refresh and load the metadata before downloading the target
+    // refresh should be called once after the client is initialized
+    async refresh() {
+        // If forceCache is true, try to load the timestamp from local storage
+        // without fetching it from the remote. Otherwise, load the root and
+        // timestamp from the remote per the TUF spec.
+        if (this.forceCache) {
+            // If anything fails, load the root and timestamp from the remote. This
+            // should cover any situation where the local metadata is corrupted or
+            // expired.
+            try {
+                await this.loadTimestamp({ checkRemote: false });
+            }
+            catch (error) {
+                await this.loadRoot();
+                await this.loadTimestamp();
+            }
+        }
+        else {
+            await this.loadRoot();
+            await this.loadTimestamp();
+        }
+        await this.loadSnapshot();
+        await this.loadTargets(models_1.MetadataKind.Targets, models_1.MetadataKind.Root);
+    }
+    // Returns the TargetFile instance with information for the given target path.
+    //
+    // Implicitly calls refresh if it hasn't already been called.
+    async getTargetInfo(targetPath) {
+        if (!this.trustedSet.targets) {
+            await this.refresh();
+        }
+        return this.preorderDepthFirstWalk(targetPath);
+    }
+    async downloadTarget(targetInfo, filePath, targetBaseUrl) {
+        const targetPath = filePath || this.generateTargetPath(targetInfo);
+        if (!targetBaseUrl) {
+            if (!this.targetBaseUrl) {
+                throw new error_1.ValueError('Target base URL not set');
+            }
+            targetBaseUrl = this.targetBaseUrl;
+        }
+        let targetFilePath = targetInfo.path;
+        const consistentSnapshot = this.trustedSet.root.signed.consistentSnapshot;
+        if (consistentSnapshot && this.config.prefixTargetsWithHash) {
+            const hashes = Object.values(targetInfo.hashes);
+            const { dir, base } = path.parse(targetFilePath);
+            const filename = `${hashes[0]}.${base}`;
+            targetFilePath = dir ? `${dir}/${filename}` : filename;
+        }
+        const targetUrl = url.join(targetBaseUrl, targetFilePath);
+        // Client workflow 5.7.3: download target file
+        await this.fetcher.downloadFile(targetUrl, targetInfo.length, async (fileName) => {
+            // Verify hashes and length of downloaded file
+            await targetInfo.verify(fs.createReadStream(fileName));
+            // Copy file to target path
+            log('WRITE %s', targetPath);
+            fs.copyFileSync(fileName, targetPath);
+        });
+        return targetPath;
+    }
+    async findCachedTarget(targetInfo, filePath) {
+        if (!filePath) {
+            filePath = this.generateTargetPath(targetInfo);
+        }
+        try {
+            if (fs.existsSync(filePath)) {
+                await targetInfo.verify(fs.createReadStream(filePath));
+                return filePath;
+            }
+        }
+        catch (error) {
+            return; // File not found
+        }
+        return; // File not found
+    }
+    loadLocalMetadata(fileName) {
+        const filePath = path.join(this.dir, `${fileName}.json`);
+        log('READ %s', filePath);
+        return fs.readFileSync(filePath);
+    }
+    // Sequentially load and persist on local disk every newer root metadata
+    // version available on the remote.
+    // Client workflow 5.3: update root role
+    async loadRoot() {
+        // Client workflow 5.3.2: version of trusted root metadata file
+        const rootVersion = this.trustedSet.root.signed.version;
+        const lowerBound = rootVersion + 1;
+        const upperBound = lowerBound + this.config.maxRootRotations;
+        for (let version = lowerBound; version < upperBound; version++) {
+            const rootUrl = url.join(this.metadataBaseUrl, `${version}.root.json`);
+            try {
+                // Client workflow 5.3.3: download new root metadata file
+                const bytesData = await this.fetcher.downloadBytes(rootUrl, this.config.rootMaxLength);
+                // Client workflow 5.3.4 - 5.4.7
+                this.trustedSet.updateRoot(bytesData);
+                // Client workflow 5.3.8: persist root metadata file
+                this.persistMetadata(models_1.MetadataKind.Root, bytesData);
+            }
+            catch (error) {
+                if (error instanceof error_1.DownloadHTTPError) {
+                    //  404/403 means current root is newest available
+                    if ([403, 404].includes(error.statusCode)) {
+                        break;
+                    }
+                }
+                throw error;
+            }
+        }
+    }
+    // Load local and remote timestamp metadata.
+    // Client workflow 5.4: update timestamp role
+    async loadTimestamp({ checkRemote } = { checkRemote: true }) {
+        // Load local and remote timestamp metadata
+        try {
+            const data = this.loadLocalMetadata(models_1.MetadataKind.Timestamp);
+            this.trustedSet.updateTimestamp(data);
+            // If checkRemote is disabled, return here to avoid fetching the remote
+            // timestamp metadata.
+            if (!checkRemote) {
+                return;
+            }
+        }
+        catch (error) {
+            // continue
+        }
+        //Load from remote (whether local load succeeded or not)
+        const timestampUrl = url.join(this.metadataBaseUrl, 'timestamp.json');
+        // Client workflow 5.4.1: download timestamp metadata file
+        const bytesData = await this.fetcher.downloadBytes(timestampUrl, this.config.timestampMaxLength);
+        try {
+            // Client workflow 5.4.2 - 5.4.4
+            this.trustedSet.updateTimestamp(bytesData);
+        }
+        catch (error) {
+            // If new timestamp version is same as current, discardd the new one.
+            // This is normal and should NOT raise an error.
+            if (error instanceof error_1.EqualVersionError) {
+                return;
+            }
+            // Re-raise any other error
+            throw error;
+        }
+        // Client workflow 5.4.5: persist timestamp metadata
+        this.persistMetadata(models_1.MetadataKind.Timestamp, bytesData);
+    }
+    // Load local and remote snapshot metadata.
+    // Client workflow 5.5: update snapshot role
+    async loadSnapshot() {
+        //Load local (and if needed remote) snapshot metadata
+        try {
+            const data = this.loadLocalMetadata(models_1.MetadataKind.Snapshot);
+            this.trustedSet.updateSnapshot(data, true);
+        }
+        catch (error) {
+            if (!this.trustedSet.timestamp) {
+                throw new ReferenceError('No timestamp metadata', { cause: error });
+            }
+            const snapshotMeta = this.trustedSet.timestamp.signed.snapshotMeta;
+            const maxLength = snapshotMeta.length || this.config.snapshotMaxLength;
+            const version = this.trustedSet.root.signed.consistentSnapshot
+                ? snapshotMeta.version
+                : undefined;
+            const snapshotUrl = url.join(this.metadataBaseUrl, version ? `${version}.snapshot.json` : 'snapshot.json');
+            try {
+                // Client workflow 5.5.1: download snapshot metadata file
+                const bytesData = await this.fetcher.downloadBytes(snapshotUrl, maxLength);
+                // Client workflow 5.5.2 - 5.5.6
+                this.trustedSet.updateSnapshot(bytesData);
+                // Client workflow 5.5.7: persist snapshot metadata file
+                this.persistMetadata(models_1.MetadataKind.Snapshot, bytesData);
+            }
+            catch (error) {
+                throw new error_1.RuntimeError(`Unable to load snapshot metadata error ${error}`);
+            }
+        }
+    }
+    // Load local and remote targets metadata.
+    // Client workflow 5.6: update targets role
+    async loadTargets(role, parentRole) {
+        const cachedRole = this.trustedSet.getRole(role);
+        if (cachedRole) {
+            const delegator = this.trustedSet.getRole(parentRole);
+            if (!delegator) {
+                throw new error_1.RuntimeError(`No trusted ${parentRole} metadata`);
+            }
+            delegator.verifyDelegate(role, cachedRole);
+            return cachedRole;
+        }
+        try {
+            const buffer = this.loadLocalMetadata(role);
+            this.trustedSet.updateDelegatedTargets(buffer, role, parentRole);
+        }
+        catch (error) {
+            // Local 'role' does not exist or is invalid: update from remote
+            if (!this.trustedSet.snapshot) {
+                throw new ReferenceError('No snapshot metadata', { cause: error });
+            }
+            const metaInfo = this.trustedSet.snapshot.signed.meta[`${role}.json`];
+            // TODO: use length for fetching
+            const maxLength = metaInfo.length || this.config.targetsMaxLength;
+            const version = this.trustedSet.root.signed.consistentSnapshot
+                ? metaInfo.version
+                : undefined;
+            const encodedRole = encodeURIComponent(role);
+            const metadataUrl = url.join(this.metadataBaseUrl, version ? `${version}.${encodedRole}.json` : `${encodedRole}.json`);
+            try {
+                // Client workflow 5.6.1: download targets metadata file
+                const bytesData = await this.fetcher.downloadBytes(metadataUrl, maxLength);
+                // Client workflow 5.6.2 - 5.6.6
+                this.trustedSet.updateDelegatedTargets(bytesData, role, parentRole);
+                // Client workflow 5.6.7: persist targets metadata file
+                this.persistMetadata(role, bytesData);
+            }
+            catch (error) {
+                throw new error_1.RuntimeError(`Unable to load targets error ${error}`);
+            }
+        }
+        return this.trustedSet.getRole(role);
+    }
+    async preorderDepthFirstWalk(targetPath) {
+        // Interrogates the tree of target delegations in order of appearance
+        // (which implicitly order trustworthiness), and returns the matching
+        // target found in the most trusted role.
+        // List of delegations to be interrogated. A (role, parent role) pair
+        // is needed to load and verify the delegated targets metadata.
+        const delegationsToVisit = [
+            {
+                roleName: models_1.MetadataKind.Targets,
+                parentRoleName: models_1.MetadataKind.Root,
+            },
+        ];
+        const visitedRoleNames = new Set();
+        // Client workflow 5.6.7: preorder depth-first traversal of the graph of
+        // target delegations
+        while (visitedRoleNames.size <= this.config.maxDelegations &&
+            delegationsToVisit.length > 0) {
+            //  Pop the role name from the top of the stack.
+            const { roleName, parentRoleName } = delegationsToVisit.pop();
+            // Skip any visited current role to prevent cycles.
+            // Client workflow 5.6.7.1: skip already-visited roles
+            if (visitedRoleNames.has(roleName)) {
+                continue;
+            }
+            // The metadata for 'role_name' must be downloaded/updated before
+            // its targets, delegations, and child roles can be inspected.
+            const targets = (await this.loadTargets(roleName, parentRoleName))
+                ?.signed;
+            if (!targets) {
+                continue;
+            }
+            const target = targets.targets?.[targetPath];
+            if (target) {
+                return target;
+            }
+            // After preorder check, add current role to set of visited roles.
+            visitedRoleNames.add(roleName);
+            if (targets.delegations) {
+                const childRolesToVisit = [];
+                // NOTE: This may be a slow operation if there are many delegated roles.
+                const rolesForTarget = targets.delegations.rolesForTarget(targetPath);
+                for (const { role: childName, terminating } of rolesForTarget) {
+                    childRolesToVisit.push({
+                        roleName: childName,
+                        parentRoleName: roleName,
+                    });
+                    // Client workflow 5.6.7.2.1
+                    if (terminating) {
+                        delegationsToVisit.splice(0); // empty the array
+                        break;
+                    }
+                }
+                childRolesToVisit.reverse();
+                delegationsToVisit.push(...childRolesToVisit);
+            }
+        }
+        return; // no matching target found
+    }
+    generateTargetPath(targetInfo) {
+        if (!this.targetDir) {
+            throw new error_1.ValueError('Target directory not set');
+        }
+        // URL encode target path
+        const filePath = encodeURIComponent(targetInfo.path);
+        return path.join(this.targetDir, filePath);
+    }
+    persistMetadata(metaDataName, bytesData) {
+        const encodedName = encodeURIComponent(metaDataName);
+        try {
+            const filePath = path.join(this.dir, `${encodedName}.json`);
+            log('WRITE %s', filePath);
+            fs.writeFileSync(filePath, bytesData.toString('utf8'));
+        }
+        catch (error) {
+            throw new error_1.PersistError(`Failed to persist metadata ${encodedName} error: ${error}`);
+        }
+    }
+}
+exports.Updater = Updater;
+
+
+/***/ }),
+
+/***/ 4611:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.withTempFile = void 0;
+const promises_1 = __importDefault(__nccwpck_require__(1943));
+const os_1 = __importDefault(__nccwpck_require__(857));
+const path_1 = __importDefault(__nccwpck_require__(6928));
+// Invokes the given handler with the path to a temporary file. The file
+// is deleted after the handler returns.
+const withTempFile = async (handler) => withTempDir(async (dir) => handler(path_1.default.join(dir, 'tempfile')));
+exports.withTempFile = withTempFile;
+// Invokes the given handler with a temporary directory. The directory is
+// deleted after the handler returns.
+const withTempDir = async (handler) => {
+    const tmpDir = await promises_1.default.realpath(os_1.default.tmpdir());
+    const dir = await promises_1.default.mkdtemp(tmpDir + path_1.default.sep);
+    try {
+        return await handler(dir);
+    }
+    finally {
+        await promises_1.default.rm(dir, { force: true, recursive: true, maxRetries: 3 });
+    }
+};
+
+
+/***/ }),
+
+/***/ 6469:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.join = join;
+const url_1 = __nccwpck_require__(7016);
+function join(base, path) {
+    return new url_1.URL(ensureTrailingSlash(base) + removeLeadingSlash(path)).toString();
+}
+function ensureTrailingSlash(path) {
+    return path.endsWith('/') ? path : path + '/';
+}
+function removeLeadingSlash(path) {
+    return path.startsWith('/') ? path.slice(1) : path;
+}
 
 
 /***/ }),
@@ -42177,6 +51605,13 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("child_proces
 
 /***/ }),
 
+/***/ 6982:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("crypto");
+
+/***/ }),
+
 /***/ 4434:
 /***/ ((module) => {
 
@@ -42188,6 +51623,13 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("events");
 /***/ ((module) => {
 
 module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("fs");
+
+/***/ }),
+
+/***/ 1943:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("fs/promises");
 
 /***/ }),
 
@@ -42394,6 +51836,13 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("tty");
 
 /***/ }),
 
+/***/ 7016:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("url");
+
+/***/ }),
+
 /***/ 9023:
 /***/ ((module) => {
 
@@ -42438,6 +51887,2835 @@ exports.w = {
     instrumenterImplementation: undefined,
 };
 //# sourceMappingURL=state-cjs.js.map
+
+/***/ }),
+
+/***/ 9498:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { RetryOperation } = __nccwpck_require__(4544)
+
+const createTimeout = (attempt, opts) => Math.min(Math.round((1 + (opts.randomize ? Math.random() : 0)) * Math.max(opts.minTimeout, 1) * Math.pow(opts.factor, attempt)), opts.maxTimeout)
+const isRetryError = err => err?.code === 'EPROMISERETRY' && Object.hasOwn(err, 'retried')
+
+const promiseRetry = async (fn, options = {}) => {
+  let timeouts = []
+  if (options instanceof Array) {
+    timeouts = [...options]
+  } else {
+    if (options.retries === Infinity) {
+      options.forever = true
+      delete options.retries
+    }
+    const opts = {
+      retries: 10,
+      factor: 2,
+      minTimeout: 1 * 1000,
+      maxTimeout: Infinity,
+      randomize: false,
+      ...options
+    }
+    if (opts.minTimeout > opts.maxTimeout) {
+      throw new Error('minTimeout is greater than maxTimeout')
+    }
+    if (opts.retries) {
+      for (let i = 0; i < opts.retries; i++) {
+        timeouts.push(createTimeout(i, opts))
+      }
+      // sort the array numerically ascending (since the timeouts may be out of order at factor < 1)
+      timeouts.sort((a, b) => a - b)
+    } else if (options.forever) {
+      timeouts.push(createTimeout(0, opts))
+    }
+  }
+
+  const operation = new RetryOperation(timeouts, {
+    forever: options.forever,
+    unref: options.unref,
+    maxRetryTime: options.maxRetryTime
+  })
+
+  return new Promise(function (resolve, reject) {
+    operation.attempt(async number => {
+      try {
+        const result = await fn(err => {
+          throw Object.assign(new Error('Retrying'), { code: 'EPROMISERETRY', retried: err })
+        }, number, operation)
+        return resolve(result)
+      } catch (err) {
+        if (!isRetryError(err)) {
+          return reject(err)
+        }
+        if (!operation.retry(err.retried || new Error())) {
+          return reject(err.retried)
+        }
+      }
+    })
+  })
+}
+
+module.exports = { promiseRetry }
+
+
+/***/ }),
+
+/***/ 4544:
+/***/ ((module) => {
+
+class RetryOperation {
+  #attempts = 1
+  #cachedTimeouts = null
+  #errors = []
+  #fn = null
+  #maxRetryTime
+  #operationStart = null
+  #originalTimeouts
+  #timeouts
+  #timer = null
+  #unref
+
+  constructor (timeouts, options = {}) {
+    this.#originalTimeouts = [...timeouts]
+    this.#timeouts = [...timeouts]
+    this.#unref = options.unref
+    this.#maxRetryTime = options.maxRetryTime || Infinity
+    if (options.forever) {
+      this.#cachedTimeouts = [...this.#timeouts]
+    }
+  }
+
+  get timeouts () {
+    return [...this.#timeouts]
+  }
+
+  get errors () {
+    return [...this.#errors]
+  }
+
+  get attempts () {
+    return this.#attempts
+  }
+
+  get mainError () {
+    let mainError = null
+    if (this.#errors.length) {
+      let mainErrorCount = 0
+      const counts = {}
+      for (let i = 0; i < this.#errors.length; i++) {
+        const error = this.#errors[i]
+        const { message } = error
+        if (!counts[message]) {
+          counts[message] = 0
+        }
+        counts[message]++
+
+        if (counts[message] >= mainErrorCount) {
+          mainError = error
+          mainErrorCount = counts[message]
+        }
+      }
+    }
+    return mainError
+  }
+
+  reset () {
+    this.#attempts = 1
+    this.#timeouts = [...this.#originalTimeouts]
+  }
+
+  stop () {
+    if (this.#timer) {
+      clearTimeout(this.#timer)
+    }
+
+    this.#timeouts = []
+    this.#cachedTimeouts = null
+  }
+
+  retry (err) {
+    this.#errors.push(err)
+    if (new Date().getTime() - this.#operationStart >= this.#maxRetryTime) {
+      // XXX This puts the timeout error first, meaning it will never show as mainError, there may be no way to ever see this
+      this.#errors.unshift(new Error('RetryOperation timeout occurred'))
+      return false
+    }
+
+    let timeout = this.#timeouts.shift()
+    if (timeout === undefined) {
+      // We're out of timeouts, clear the last error and repeat the final timeout
+      if (this.#cachedTimeouts) {
+        this.#errors.pop()
+        timeout = this.#cachedTimeouts.at(-1)
+      } else {
+        return false
+      }
+    }
+
+    // TODO what if there already is a timer?
+    this.#timer = setTimeout(() => {
+      this.#attempts++
+      this.#fn(this.#attempts)
+    }, timeout)
+
+    if (this.#unref) {
+      this.#timer.unref()
+    }
+
+    return true
+  }
+
+  attempt (fn) {
+    this.#fn = fn
+    this.#operationStart = new Date().getTime()
+    this.#fn(this.#attempts)
+  }
+}
+module.exports = { RetryOperation }
+
+
+/***/ }),
+
+/***/ 4012:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.range = exports.balanced = void 0;
+const balanced = (a, b, str) => {
+    const ma = a instanceof RegExp ? maybeMatch(a, str) : a;
+    const mb = b instanceof RegExp ? maybeMatch(b, str) : b;
+    const r = ma !== null && mb != null && (0, exports.range)(ma, mb, str);
+    return (r && {
+        start: r[0],
+        end: r[1],
+        pre: str.slice(0, r[0]),
+        body: str.slice(r[0] + ma.length, r[1]),
+        post: str.slice(r[1] + mb.length),
+    });
+};
+exports.balanced = balanced;
+const maybeMatch = (reg, str) => {
+    const m = str.match(reg);
+    return m ? m[0] : null;
+};
+const range = (a, b, str) => {
+    let begs, beg, left, right = undefined, result;
+    let ai = str.indexOf(a);
+    let bi = str.indexOf(b, ai + 1);
+    let i = ai;
+    if (ai >= 0 && bi > 0) {
+        if (a === b) {
+            return [ai, bi];
+        }
+        begs = [];
+        left = str.length;
+        while (i >= 0 && !result) {
+            if (i === ai) {
+                begs.push(i);
+                ai = str.indexOf(a, i + 1);
+            }
+            else if (begs.length === 1) {
+                const r = begs.pop();
+                if (r !== undefined)
+                    result = [r, bi];
+            }
+            else {
+                beg = begs.pop();
+                if (beg !== undefined && beg < left) {
+                    left = beg;
+                    right = bi;
+                }
+                bi = str.indexOf(b, i + 1);
+            }
+            i = ai < bi && ai >= 0 ? ai : bi;
+        }
+        if (begs.length && right !== undefined) {
+            result = [left, right];
+        }
+    }
+    return result;
+};
+exports.range = range;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 3783:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.EXPANSION_MAX_REWRITES = exports.EXPANSION_MAX_DEPTH = exports.EXPANSION_MAX_LENGTH = exports.EXPANSION_MAX = void 0;
+exports.expand = expand;
+const balanced_match_1 = __nccwpck_require__(4012);
+const escSlash = '\0SLASH' + Math.random() + '\0';
+const escOpen = '\0OPEN' + Math.random() + '\0';
+const escClose = '\0CLOSE' + Math.random() + '\0';
+const escComma = '\0COMMA' + Math.random() + '\0';
+const escPeriod = '\0PERIOD' + Math.random() + '\0';
+const escSlashPattern = new RegExp(escSlash, 'g');
+const escOpenPattern = new RegExp(escOpen, 'g');
+const escClosePattern = new RegExp(escClose, 'g');
+const escCommaPattern = new RegExp(escComma, 'g');
+const escPeriodPattern = new RegExp(escPeriod, 'g');
+const slashPattern = /\\\\/g;
+const openPattern = /\\{/g;
+const closePattern = /\\}/g;
+const commaPattern = /\\,/g;
+const periodPattern = /\\\./g;
+exports.EXPANSION_MAX = 100_000;
+// `EXPANSION_MAX` caps the *number* of expansions, but not their length. An
+// input like `'{a,b}'.repeat(1500)` stays under that count - its output is
+// truncated to 100k results - while making every result ~1500 characters
+// long. The result set, and the intermediate arrays built while combining
+// brace sets, then grow large enough to exhaust memory and crash the process
+// (CVE-2026-14257). `EXPANSION_MAX_LENGTH` bounds the total number of
+// characters the accumulator may hold at any point, so memory stays flat no
+// matter how many brace groups are chained. The limit sits well above any
+// realistic expansion (100k results hitting `EXPANSION_MAX` measure ~1M
+// characters) so legitimate input is unaffected.
+exports.EXPANSION_MAX_LENGTH = 4_000_000;
+// `expand_` recurses once per level of brace *nesting* - both when expanding a
+// set's comma members and when re-wrapping a set whose body is a single part.
+// The CVE-2026-14257 fix made the *tail* iterative (recursion on `m.post`, one
+// level per chained group), which left nesting depth unbounded: about 3,100
+// levels of `{{{...a,b...}}}` - only ~6KB of input - exhausted the native stack
+// and crashed the process. `EXPANSION_MAX_DEPTH` bounds how deep the parser
+// will follow nesting. It sits far above any realistic pattern and well below
+// the depth at which the stack runs out.
+exports.EXPANSION_MAX_DEPTH = 1_000;
+// Bash keeps a quirk where a brace group followed by a comma set still expands
+// (`{a},b}`). The parser implements it by rewriting the string and restarting
+// the scan, absorbing one `}` per pass. `n` trailing braces therefore cost `n`
+// full passes over a string that itself grows by one `escClose` sentinel each
+// time - quadratic in `n`, with a ~26x constant from the sentinel's length.
+// 128KB of `'{a}' + '}'.repeat(n) + ',z}'` blocked the event loop for 27
+// seconds to produce two results. `EXPANSION_MAX_REWRITES` bounds how many
+// times the scan may restart. Real `{a},b}` input needs a handful.
+exports.EXPANSION_MAX_REWRITES = 1_000;
+function numeric(str) {
+    return !isNaN(str) ? parseInt(str, 10) : str.charCodeAt(0);
+}
+function escapeBraces(str) {
+    return str
+        .replace(slashPattern, escSlash)
+        .replace(openPattern, escOpen)
+        .replace(closePattern, escClose)
+        .replace(commaPattern, escComma)
+        .replace(periodPattern, escPeriod);
+}
+function unescapeBraces(str) {
+    return str
+        .replace(escSlashPattern, '\\')
+        .replace(escOpenPattern, '{')
+        .replace(escClosePattern, '}')
+        .replace(escCommaPattern, ',')
+        .replace(escPeriodPattern, '.');
+}
+// Like `target.push(...items)` but doesn't overflow the stack
+function pushAll(target, items) {
+    for (let i = 0; i < items.length; i++) {
+        target.push(items[i]);
+    }
+}
+/**
+ * Basically just str.split(","), but handling cases
+ * where we have nested braced sections, which should be
+ * treated as individual members, like {a,{b,c},d}
+ */
+function parseCommaParts(str) {
+    const parts = [];
+    // Walk the brace groups iteratively. Recursing on `post` once per group let a
+    // chain of them exhaust the stack - the parsing-side counterpart to
+    // the `expand_` overflow fixed for CVE-2026-14257, and not something `max` or
+    // `maxLength` can bound, since it happens before expansion.
+    //
+    // The part the next chunk continues
+    let carry = '';
+    for (;;) {
+        const m = (0, balanced_match_1.balanced)('{', '}', str);
+        if (!m) {
+            const tail = str.split(',');
+            tail[0] = carry + tail[0];
+            pushAll(parts, tail);
+            return parts;
+        }
+        const { pre, body, post } = m;
+        const p = pre.split(',');
+        p[0] = carry + p[0];
+        p[p.length - 1] += '{' + body + '}';
+        if (!post.length) {
+            pushAll(parts, p);
+            return parts;
+        }
+        carry = p.pop();
+        pushAll(parts, p);
+        str = post;
+    }
+}
+function expand(str, options = {}) {
+    if (!str) {
+        return [];
+    }
+    const { max = exports.EXPANSION_MAX, maxLength = exports.EXPANSION_MAX_LENGTH, maxDepth = exports.EXPANSION_MAX_DEPTH, maxRewrites = exports.EXPANSION_MAX_REWRITES, } = options;
+    // I don't know why Bash 4.3 does this, but it does.
+    // Anything starting with {} will have the first two bytes preserved
+    // but *only* at the top level, so {},a}b will not expand to anything,
+    // but a{},b}c will be expanded to [a}c,abc].
+    // One could argue that this is a bug in Bash, but since the goal of
+    // this module is to match Bash's rules, we escape a leading {}
+    if (str.slice(0, 2) === '{}') {
+        str = '\\{\\}' + str.slice(2);
+    }
+    return expand_(escapeBraces(str), max, maxLength, maxDepth, 0, maxRewrites, true).map(unescapeBraces);
+}
+function embrace(str) {
+    return '{' + str + '}';
+}
+function isPadded(el) {
+    return /^-?0\d/.test(el);
+}
+function lte(i, y) {
+    return i <= y;
+}
+function gte(i, y) {
+    return i >= y;
+}
+// Build `{ acc[a] + pre + values[v] }` for every combination, capping the
+// number of results at `max` and the total number of characters at `maxLength`.
+// This is the one place output grows, so bounding it here keeps the single
+// accumulator - and therefore memory - flat regardless of how many brace groups
+// are combined (CVE-2026-14257).
+function combine(acc, pre, values, max, maxLength, dropEmpties) {
+    const out = [];
+    let length = 0;
+    for (let a = 0; a < acc.length; a++) {
+        for (let v = 0; v < values.length; v++) {
+            if (out.length >= max)
+                return out;
+            const expansion = acc[a] + pre + values[v];
+            // Bash drops empty results at the top level. Skip them before they count
+            // against `max`, so `max` bounds the number of *kept* results.
+            if (dropEmpties && !expansion)
+                continue;
+            if (length + expansion.length > maxLength)
+                return out;
+            out.push(expansion);
+            length += expansion.length;
+        }
+    }
+    return out;
+}
+// The expansion values of a single numeric (`1..5`) or alphabetic (`a..e..2`)
+// sequence body.
+function expandSequence(body, isAlphaSequence, max, maxLength) {
+    const n = body.split(/\.\./);
+    const N = [];
+    // A sequence body always splits into two or three parts, but the compiler
+    // can't know that.
+    /* c8 ignore start */
+    if (n[0] === undefined || n[1] === undefined) {
+        return N;
+    }
+    /* c8 ignore stop */
+    const x = numeric(n[0]);
+    const y = numeric(n[1]);
+    const width = Math.max(n[0].length, n[1].length);
+    let incr = n.length === 3 && n[2] !== undefined ?
+        Math.max(Math.abs(numeric(n[2])), 1)
+        : 1;
+    let test = lte;
+    const reverse = y < x;
+    if (reverse) {
+        incr *= -1;
+        test = gte;
+    }
+    const pad = n.some(isPadded);
+    let length = 0;
+    for (let i = x; test(i, y) && N.length < max; i += incr) {
+        let c;
+        if (isAlphaSequence) {
+            c = String.fromCharCode(i);
+            if (c === '\\') {
+                c = '';
+            }
+        }
+        else {
+            c = String(i);
+            if (pad) {
+                const need = width - c.length;
+                if (need > 0) {
+                    const z = new Array(need + 1).join('0');
+                    if (i < 0) {
+                        c = '-' + z + c.slice(1);
+                    }
+                    else {
+                        c = z + c;
+                    }
+                }
+            }
+        }
+        if (length + c.length > maxLength)
+            break;
+        N.push(c);
+        length += c.length;
+    }
+    return N;
+}
+function expand_(str, max, maxLength, maxDepth, depth, maxRewrites, isTop) {
+    // Too deeply nested to keep following: treat the rest as literal, the same
+    // way a group that cannot expand is already handled. Truncating rather than
+    // throwing keeps `expand` total, matching `max` and `maxLength`.
+    if (depth > maxDepth) {
+        return [str];
+    }
+    // Consume the string's top-level brace groups left to right, threading a
+    // running set of combined prefixes (`acc`). Expanding the tail iteratively -
+    // rather than recursing on `m.post` once per group - keeps the native stack
+    // depth constant, so deeply chained input (`'{a,b}'.repeat(3000)`) can no
+    // longer overflow the stack, and leaves a single accumulator whose size
+    // `maxLength` bounds directly (CVE-2026-14257).
+    let acc = [''];
+    // Bash drops empty results, but only when the *first* top-level group is a
+    // comma set - a sequence like `{a..\}` may legitimately yield ''. The drop
+    // is on the final strings, so it is applied to whichever `combine` produces
+    // them (the one with no brace set left in the tail).
+    // How many times the `{a},b}` rewrite below has restarted the scan. Each pass
+    // re-reads the whole string, so leaving this unbounded is quadratic.
+    let rewrites = 0;
+    let dropEmpties = false;
+    let firstGroup = true;
+    for (;;) {
+        const m = (0, balanced_match_1.balanced)('{', '}', str);
+        // No brace set left: the rest of the string is literal.
+        if (!m) {
+            return combine(acc, str, [''], max, maxLength, dropEmpties);
+        }
+        // no need to expand pre, since it is guaranteed to be free of brace-sets
+        const pre = m.pre;
+        if (/\$$/.test(pre)) {
+            acc = combine(acc, pre + '{' + m.body + '}', [''], max, maxLength, dropEmpties && !m.post.length);
+            firstGroup = false;
+            if (!m.post.length)
+                break;
+            str = m.post;
+            continue;
+        }
+        const isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
+        const isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
+        const isSequence = isNumericSequence || isAlphaSequence;
+        const isOptions = m.body.indexOf(',') >= 0;
+        if (!isSequence && !isOptions) {
+            // {a},b}
+            if (rewrites < maxRewrites && m.post.match(/,(?!,).*\}/)) {
+                rewrites++;
+                str = m.pre + '{' + m.body + escClose + m.post;
+                isTop = true;
+                continue;
+            }
+            // Nothing here expands, so the whole remaining string is literal.
+            return combine(acc, pre + '{' + m.body + '}' + m.post, [''], max, maxLength, dropEmpties);
+        }
+        if (firstGroup) {
+            dropEmpties = isTop && !isSequence;
+            firstGroup = false;
+        }
+        let values;
+        if (isSequence) {
+            values = expandSequence(m.body, isAlphaSequence, max, maxLength);
+        }
+        else {
+            let n = parseCommaParts(m.body);
+            if (n.length === 1 && n[0] !== undefined) {
+                // x{{a,b}}y ==> x{a}y x{b}y
+                n = expand_(n[0], max, maxLength, maxDepth, depth + 1, maxRewrites, false).map(embrace);
+                //XXX is this necessary? Can't seem to hit it in tests.
+                /* c8 ignore start */
+                if (n.length === 1) {
+                    acc = combine(acc, pre + n[0], [''], max, maxLength, dropEmpties && !m.post.length);
+                    if (!m.post.length)
+                        break;
+                    str = m.post;
+                    continue;
+                }
+                /* c8 ignore stop */
+            }
+            // Values that `combine` is going to drop as empty produce no result, so
+            // they must not count against `max` - otherwise `{a,,b}` with `max: 2`
+            // would stop at `['a', '']` and yield one result instead of two. Skipping
+            // them outright keeps `values` bounded while leaving `max` a bound on
+            // *kept* results.
+            let dropsEmpties = dropEmpties && !m.post.length && !pre;
+            for (let d = 0; dropsEmpties && d < acc.length; d++) {
+                if (acc[d]) {
+                    dropsEmpties = false;
+                }
+            }
+            values = [];
+            let valuesLength = 0;
+            outer: for (let j = 0; j < n.length; j++) {
+                const expanded = expand_(n[j], max, maxLength, maxDepth, depth + 1, maxRewrites, false);
+                for (let k = 0; k < expanded.length; k++) {
+                    const v = expanded[k];
+                    if (dropsEmpties && !v)
+                        continue;
+                    if (values.length >= max ||
+                        valuesLength + v.length > maxLength) {
+                        break outer;
+                    }
+                    values.push(v);
+                    valuesLength += v.length;
+                }
+            }
+        }
+        acc = combine(acc, pre, values, max, maxLength, dropEmpties && !m.post.length);
+        if (!m.post.length)
+            break;
+        str = m.post;
+    }
+    return acc;
+}
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 4460:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.assertValidPattern = void 0;
+const MAX_PATTERN_LENGTH = 1024 * 64;
+const assertValidPattern = (pattern) => {
+    if (typeof pattern !== 'string') {
+        throw new TypeError('invalid pattern');
+    }
+    if (pattern.length > MAX_PATTERN_LENGTH) {
+        throw new TypeError('pattern is too long');
+    }
+};
+exports.assertValidPattern = assertValidPattern;
+//# sourceMappingURL=assert-valid-pattern.js.map
+
+/***/ }),
+
+/***/ 5044:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+// parse a single path portion
+var _a;
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.AST = void 0;
+const brace_expressions_js_1 = __nccwpck_require__(7269);
+const unescape_js_1 = __nccwpck_require__(8146);
+const types = new Set(['!', '?', '+', '*', '@']);
+const isExtglobType = (c) => types.has(c);
+const isExtglobAST = (c) => isExtglobType(c.type);
+// Map of which extglob types can adopt the children of a nested extglob
+//
+// anything but ! can adopt a matching type:
+// +(a|+(b|c)|d) => +(a|b|c|d)
+// *(a|*(b|c)|d) => *(a|b|c|d)
+// @(a|@(b|c)|d) => @(a|b|c|d)
+// ?(a|?(b|c)|d) => ?(a|b|c|d)
+//
+// * can adopt anything, because 0 or repetition is allowed
+// *(a|?(b|c)|d) => *(a|b|c|d)
+// *(a|+(b|c)|d) => *(a|b|c|d)
+// *(a|@(b|c)|d) => *(a|b|c|d)
+//
+// + can adopt @, because 1 or repetition is allowed
+// +(a|@(b|c)|d) => +(a|b|c|d)
+//
+// + and @ CANNOT adopt *, because 0 would be allowed
+// +(a|*(b|c)|d) => would match "", on *(b|c)
+// @(a|*(b|c)|d) => would match "", on *(b|c)
+//
+// + and @ CANNOT adopt ?, because 0 would be allowed
+// +(a|?(b|c)|d) => would match "", on ?(b|c)
+// @(a|?(b|c)|d) => would match "", on ?(b|c)
+//
+// ? can adopt @, because 0 or 1 is allowed
+// ?(a|@(b|c)|d) => ?(a|b|c|d)
+//
+// ? and @ CANNOT adopt * or +, because >1 would be allowed
+// ?(a|*(b|c)|d) => would match bbb on *(b|c)
+// @(a|*(b|c)|d) => would match bbb on *(b|c)
+// ?(a|+(b|c)|d) => would match bbb on +(b|c)
+// @(a|+(b|c)|d) => would match bbb on +(b|c)
+//
+// ! CANNOT adopt ! (nothing else can either)
+// !(a|!(b|c)|d) => !(a|b|c|d) would fail to match on b (not not b|c)
+//
+// ! can adopt @
+// !(a|@(b|c)|d) => !(a|b|c|d)
+//
+// ! CANNOT adopt *
+// !(a|*(b|c)|d) => !(a|b|c|d) would match on bbb, not allowed
+//
+// ! CANNOT adopt +
+// !(a|+(b|c)|d) => !(a|b|c|d) would match on bbb, not allowed
+//
+// ! CANNOT adopt ?
+// x!(a|?(b|c)|d) => x!(a|b|c|d) would fail to match "x"
+const adoptionMap = new Map([
+    ['!', ['@']],
+    ['?', ['?', '@']],
+    ['@', ['@']],
+    ['*', ['*', '+', '?', '@']],
+    ['+', ['+', '@']],
+]);
+// nested extglobs that can be adopted in, but with the addition of
+// a blank '' element.
+const adoptionWithSpaceMap = new Map([
+    ['!', ['?']],
+    ['@', ['?']],
+    ['+', ['?', '*']],
+]);
+// union of the previous two maps
+const adoptionAnyMap = new Map([
+    ['!', ['?', '@']],
+    ['?', ['?', '@']],
+    ['@', ['?', '@']],
+    ['*', ['*', '+', '?', '@']],
+    ['+', ['+', '@', '?', '*']],
+]);
+// Extglobs that can take over their parent if they are the only child
+// the key is parent, value maps child to resulting extglob parent type
+// '@' is omitted because it's a special case. An `@` extglob with a single
+// member can always be usurped by that subpattern.
+const usurpMap = new Map([
+    ['!', new Map([['!', '@']])],
+    [
+        '?',
+        new Map([
+            ['*', '*'],
+            ['+', '*'],
+        ]),
+    ],
+    [
+        '@',
+        new Map([
+            ['!', '!'],
+            ['?', '?'],
+            ['@', '@'],
+            ['*', '*'],
+            ['+', '+'],
+        ]),
+    ],
+    [
+        '+',
+        new Map([
+            ['?', '*'],
+            ['*', '*'],
+        ]),
+    ],
+]);
+// Patterns that get prepended to bind to the start of either the
+// entire string, or just a single path portion, to prevent dots
+// and/or traversal patterns, when needed.
+// Exts don't need the ^ or / bit, because the root binds that already.
+const startNoTraversal = '(?!(?:^|/)\\.\\.?(?:$|/))';
+const startNoDot = '(?!\\.)';
+// characters that indicate a start of pattern needs the "no dots" bit,
+// because a dot *might* be matched. ( is not in the list, because in
+// the case of a child extglob, it will handle the prevention itself.
+const addPatternStart = new Set(['[', '.']);
+// cases where traversal is A-OK, no dot prevention needed
+const justDots = new Set(['..', '.']);
+const reSpecials = new Set('().*{}+?[]^$\\!');
+const regExpEscape = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+// any single thing other than /
+const qmark = '[^/]';
+// * => any number of characters
+const star = qmark + '*?';
+// use + when we need to ensure that *something* matches, because the * is
+// the only thing in the path portion.
+const starNoEmpty = qmark + '+?';
+// remove the \ chars that we added if we end up doing a nonmagic compare
+// const deslash = (s: string) => s.replace(/\\(.)/g, '$1')
+let ID = 0;
+class AST {
+    type;
+    #root;
+    #hasMagic;
+    #uflag = false;
+    #parts = [];
+    #parent;
+    #parentIndex;
+    #negs;
+    #filledNegs = false;
+    #options;
+    #toString;
+    // set to true if it's an extglob with no children
+    // (which really means one child of '')
+    #emptyExt = false;
+    id = ++ID;
+    get depth() {
+        return (this.#parent?.depth ?? -1) + 1;
+    }
+    [Symbol.for('nodejs.util.inspect.custom')]() {
+        return {
+            '@@type': 'AST',
+            id: this.id,
+            type: this.type,
+            root: this.#root.id,
+            parent: this.#parent?.id,
+            depth: this.depth,
+            partsLength: this.#parts.length,
+            parts: this.#parts,
+        };
+    }
+    constructor(type, parent, options = {}) {
+        this.type = type;
+        // extglobs are inherently magical
+        if (type)
+            this.#hasMagic = true;
+        this.#parent = parent;
+        this.#root = this.#parent ? this.#parent.#root : this;
+        this.#options = this.#root === this ? options : this.#root.#options;
+        this.#negs = this.#root === this ? [] : this.#root.#negs;
+        if (type === '!' && !this.#root.#filledNegs)
+            this.#negs.push(this);
+        this.#parentIndex = this.#parent ? this.#parent.#parts.length : 0;
+    }
+    get hasMagic() {
+        /* c8 ignore start */
+        if (this.#hasMagic !== undefined)
+            return this.#hasMagic;
+        /* c8 ignore stop */
+        for (const p of this.#parts) {
+            if (typeof p === 'string')
+                continue;
+            if (p.type || p.hasMagic)
+                return (this.#hasMagic = true);
+        }
+        // note: will be undefined until we generate the regexp src and find out
+        return this.#hasMagic;
+    }
+    // reconstructs the pattern
+    toString() {
+        return (this.#toString !== undefined ? this.#toString
+            : !this.type ?
+                (this.#toString = this.#parts.map(p => String(p)).join(''))
+                : (this.#toString =
+                    this.type +
+                        '(' +
+                        this.#parts.map(p => String(p)).join('|') +
+                        ')'));
+    }
+    #fillNegs() {
+        /* c8 ignore start */
+        if (this !== this.#root)
+            throw new Error('should only call on root');
+        if (this.#filledNegs)
+            return this;
+        /* c8 ignore stop */
+        // call toString() once to fill this out
+        this.toString();
+        this.#filledNegs = true;
+        let n;
+        while ((n = this.#negs.pop())) {
+            if (n.type !== '!')
+                continue;
+            // walk up the tree, appending everthing that comes AFTER parentIndex
+            let p = n;
+            let pp = p.#parent;
+            while (pp) {
+                for (let i = p.#parentIndex + 1; !pp.type && i < pp.#parts.length; i++) {
+                    for (const part of n.#parts) {
+                        /* c8 ignore start */
+                        if (typeof part === 'string') {
+                            throw new Error('string part in extglob AST??');
+                        }
+                        /* c8 ignore stop */
+                        part.copyIn(pp.#parts[i]);
+                    }
+                }
+                p = pp;
+                pp = p.#parent;
+            }
+        }
+        return this;
+    }
+    push(...parts) {
+        for (const p of parts) {
+            if (p === '')
+                continue;
+            /* c8 ignore start */
+            if (typeof p !== 'string' &&
+                !(p instanceof _a && p.#parent === this)) {
+                throw new Error('invalid part: ' + p);
+            }
+            /* c8 ignore stop */
+            this.#parts.push(p);
+        }
+    }
+    toJSON() {
+        const ret = this.type === null ?
+            this.#parts
+                .slice()
+                .map(p => (typeof p === 'string' ? p : p.toJSON()))
+            : [this.type, ...this.#parts.map(p => p.toJSON())];
+        if (this.isStart() && !this.type)
+            ret.unshift([]);
+        if (this.isEnd() &&
+            (this === this.#root ||
+                (this.#root.#filledNegs && this.#parent?.type === '!'))) {
+            ret.push({});
+        }
+        return ret;
+    }
+    isStart() {
+        if (this.#root === this)
+            return true;
+        // if (this.type) return !!this.#parent?.isStart()
+        if (!this.#parent?.isStart())
+            return false;
+        if (this.#parentIndex === 0)
+            return true;
+        // if everything AHEAD of this is a negation, then it's still the "start"
+        const p = this.#parent;
+        for (let i = 0; i < this.#parentIndex; i++) {
+            const pp = p.#parts[i];
+            if (!(pp instanceof _a && pp.type === '!')) {
+                return false;
+            }
+        }
+        return true;
+    }
+    isEnd() {
+        if (this.#root === this)
+            return true;
+        if (this.#parent?.type === '!')
+            return true;
+        if (!this.#parent?.isEnd())
+            return false;
+        if (!this.type)
+            return this.#parent?.isEnd();
+        // if not root, it'll always have a parent
+        /* c8 ignore start */
+        const pl = this.#parent ? this.#parent.#parts.length : 0;
+        /* c8 ignore stop */
+        return this.#parentIndex === pl - 1;
+    }
+    copyIn(part) {
+        if (typeof part === 'string')
+            this.push(part);
+        else
+            this.push(part.clone(this));
+    }
+    clone(parent) {
+        const c = new _a(this.type, parent);
+        for (const p of this.#parts) {
+            c.copyIn(p);
+        }
+        return c;
+    }
+    static #parseAST(str, ast, pos, opt, extDepth) {
+        const maxDepth = opt.maxExtglobRecursion ?? 2;
+        let escaping = false;
+        let inBrace = false;
+        let braceStart = -1;
+        let braceNeg = false;
+        if (ast.type === null) {
+            // outside of a extglob, append until we find a start
+            let i = pos;
+            let acc = '';
+            while (i < str.length) {
+                const c = str.charAt(i++);
+                // still accumulate escapes at this point, but we do ignore
+                // starts that are escaped
+                if (escaping || c === '\\') {
+                    escaping = !escaping;
+                    acc += c;
+                    continue;
+                }
+                if (inBrace) {
+                    if (i === braceStart + 1) {
+                        if (c === '^' || c === '!') {
+                            braceNeg = true;
+                        }
+                    }
+                    else if (c === ']' && !(i === braceStart + 2 && braceNeg)) {
+                        inBrace = false;
+                    }
+                    acc += c;
+                    continue;
+                }
+                else if (c === '[') {
+                    inBrace = true;
+                    braceStart = i;
+                    braceNeg = false;
+                    acc += c;
+                    continue;
+                }
+                // we don't have to check for adoption here, because that's
+                // done at the other recursion point.
+                const doRecurse = !opt.noext &&
+                    isExtglobType(c) &&
+                    str.charAt(i) === '(' &&
+                    extDepth <= maxDepth;
+                if (doRecurse) {
+                    ast.push(acc);
+                    acc = '';
+                    const ext = new _a(c, ast);
+                    i = _a.#parseAST(str, ext, i, opt, extDepth + 1);
+                    ast.push(ext);
+                    continue;
+                }
+                acc += c;
+            }
+            ast.push(acc);
+            return i;
+        }
+        // some kind of extglob, pos is at the (
+        // find the next | or )
+        let i = pos + 1;
+        let part = new _a(null, ast);
+        const parts = [];
+        let acc = '';
+        while (i < str.length) {
+            const c = str.charAt(i++);
+            // still accumulate escapes at this point, but we do ignore
+            // starts that are escaped
+            if (escaping || c === '\\') {
+                escaping = !escaping;
+                acc += c;
+                continue;
+            }
+            if (inBrace) {
+                if (i === braceStart + 1) {
+                    if (c === '^' || c === '!') {
+                        braceNeg = true;
+                    }
+                }
+                else if (c === ']' && !(i === braceStart + 2 && braceNeg)) {
+                    inBrace = false;
+                }
+                acc += c;
+                continue;
+            }
+            else if (c === '[') {
+                inBrace = true;
+                braceStart = i;
+                braceNeg = false;
+                acc += c;
+                continue;
+            }
+            const doRecurse = !opt.noext &&
+                isExtglobType(c) &&
+                str.charAt(i) === '(' &&
+                /* c8 ignore start - the maxDepth is sufficient here */
+                (extDepth <= maxDepth || (ast && ast.#canAdoptType(c)));
+            /* c8 ignore stop */
+            if (doRecurse) {
+                const depthAdd = ast && ast.#canAdoptType(c) ? 0 : 1;
+                part.push(acc);
+                acc = '';
+                const ext = new _a(c, part);
+                part.push(ext);
+                i = _a.#parseAST(str, ext, i, opt, extDepth + depthAdd);
+                continue;
+            }
+            if (c === '|') {
+                part.push(acc);
+                acc = '';
+                parts.push(part);
+                part = new _a(null, ast);
+                continue;
+            }
+            if (c === ')') {
+                if (acc === '' && ast.#parts.length === 0) {
+                    ast.#emptyExt = true;
+                }
+                part.push(acc);
+                acc = '';
+                ast.push(...parts, part);
+                return i;
+            }
+            acc += c;
+        }
+        // unfinished extglob
+        // if we got here, it was a malformed extglob! not an extglob, but
+        // maybe something else in there.
+        ast.type = null;
+        ast.#hasMagic = undefined;
+        ast.#parts = [str.substring(pos - 1)];
+        return i;
+    }
+    #canAdoptWithSpace(child) {
+        return this.#canAdopt(child, adoptionWithSpaceMap);
+    }
+    #canAdopt(child, map = adoptionMap) {
+        if (!child ||
+            typeof child !== 'object' ||
+            child.type !== null ||
+            child.#parts.length !== 1 ||
+            this.type === null) {
+            return false;
+        }
+        const gc = child.#parts[0];
+        if (!gc || typeof gc !== 'object' || gc.type === null) {
+            return false;
+        }
+        return this.#canAdoptType(gc.type, map);
+    }
+    #canAdoptType(c, map = adoptionAnyMap) {
+        return !!map.get(this.type)?.includes(c);
+    }
+    #adoptWithSpace(child, index) {
+        const gc = child.#parts[0];
+        const blank = new _a(null, gc, this.options);
+        blank.#parts.push('');
+        gc.push(blank);
+        this.#adopt(child, index);
+    }
+    #adopt(child, index) {
+        const gc = child.#parts[0];
+        this.#parts.splice(index, 1, ...gc.#parts);
+        for (const p of gc.#parts) {
+            if (typeof p === 'object')
+                p.#parent = this;
+        }
+        this.#toString = undefined;
+    }
+    #canUsurpType(c) {
+        const m = usurpMap.get(this.type);
+        return !!m?.has(c);
+    }
+    #canUsurp(child) {
+        if (!child ||
+            typeof child !== 'object' ||
+            child.type !== null ||
+            child.#parts.length !== 1 ||
+            this.type === null ||
+            this.#parts.length !== 1) {
+            return false;
+        }
+        const gc = child.#parts[0];
+        if (!gc || typeof gc !== 'object' || gc.type === null) {
+            return false;
+        }
+        return this.#canUsurpType(gc.type);
+    }
+    #usurp(child) {
+        const m = usurpMap.get(this.type);
+        const gc = child.#parts[0];
+        const nt = m?.get(gc.type);
+        /* c8 ignore start - impossible */
+        if (!nt)
+            return false;
+        /* c8 ignore stop */
+        this.#parts = gc.#parts;
+        for (const p of this.#parts) {
+            if (typeof p === 'object') {
+                p.#parent = this;
+            }
+        }
+        this.type = nt;
+        this.#toString = undefined;
+        this.#emptyExt = false;
+    }
+    static fromGlob(pattern, options = {}) {
+        const ast = new _a(null, undefined, options);
+        _a.#parseAST(pattern, ast, 0, options, 0);
+        return ast;
+    }
+    // returns the regular expression if there's magic, or the unescaped
+    // string if not.
+    toMMPattern() {
+        // should only be called on root
+        /* c8 ignore start */
+        if (this !== this.#root)
+            return this.#root.toMMPattern();
+        /* c8 ignore stop */
+        const glob = this.toString();
+        const [re, body, hasMagic, uflag] = this.toRegExpSource();
+        // if we're in nocase mode, and not nocaseMagicOnly, then we do
+        // still need a regular expression if we have to case-insensitively
+        // match capital/lowercase characters.
+        const anyMagic = hasMagic ||
+            this.#hasMagic ||
+            (this.#options.nocase &&
+                !this.#options.nocaseMagicOnly &&
+                glob.toUpperCase() !== glob.toLowerCase());
+        if (!anyMagic) {
+            return body;
+        }
+        const flags = (this.#options.nocase ? 'i' : '') + (uflag ? 'u' : '');
+        return Object.assign(new RegExp(`^${re}$`, flags), {
+            _src: re,
+            _glob: glob,
+        });
+    }
+    get options() {
+        return this.#options;
+    }
+    // returns the string match, the regexp source, whether there's magic
+    // in the regexp (so a regular expression is required) and whether or
+    // not the uflag is needed for the regular expression (for posix classes)
+    // TODO: instead of injecting the start/end at this point, just return
+    // the BODY of the regexp, along with the start/end portions suitable
+    // for binding the start/end in either a joined full-path makeRe context
+    // (where we bind to (^|/), or a standalone matchPart context (where
+    // we bind to ^, and not /).  Otherwise slashes get duped!
+    //
+    // In part-matching mode, the start is:
+    // - if not isStart: nothing
+    // - if traversal possible, but not allowed: ^(?!\.\.?$)
+    // - if dots allowed or not possible: ^
+    // - if dots possible and not allowed: ^(?!\.)
+    // end is:
+    // - if not isEnd(): nothing
+    // - else: $
+    //
+    // In full-path matching mode, we put the slash at the START of the
+    // pattern, so start is:
+    // - if first pattern: same as part-matching mode
+    // - if not isStart(): nothing
+    // - if traversal possible, but not allowed: /(?!\.\.?(?:$|/))
+    // - if dots allowed or not possible: /
+    // - if dots possible and not allowed: /(?!\.)
+    // end is:
+    // - if last pattern, same as part-matching mode
+    // - else nothing
+    //
+    // Always put the (?:$|/) on negated tails, though, because that has to be
+    // there to bind the end of the negated pattern portion, and it's easier to
+    // just stick it in now rather than try to inject it later in the middle of
+    // the pattern.
+    //
+    // We can just always return the same end, and leave it up to the caller
+    // to know whether it's going to be used joined or in parts.
+    // And, if the start is adjusted slightly, can do the same there:
+    // - if not isStart: nothing
+    // - if traversal possible, but not allowed: (?:/|^)(?!\.\.?$)
+    // - if dots allowed or not possible: (?:/|^)
+    // - if dots possible and not allowed: (?:/|^)(?!\.)
+    //
+    // But it's better to have a simpler binding without a conditional, for
+    // performance, so probably better to return both start options.
+    //
+    // Then the caller just ignores the end if it's not the first pattern,
+    // and the start always gets applied.
+    //
+    // But that's always going to be $ if it's the ending pattern, or nothing,
+    // so the caller can just attach $ at the end of the pattern when building.
+    //
+    // So the todo is:
+    // - better detect what kind of start is needed
+    // - return both flavors of starting pattern
+    // - attach $ at the end of the pattern when creating the actual RegExp
+    //
+    // Ah, but wait, no, that all only applies to the root when the first pattern
+    // is not an extglob. If the first pattern IS an extglob, then we need all
+    // that dot prevention biz to live in the extglob portions, because eg
+    // +(*|.x*) can match .xy but not .yx.
+    //
+    // So, return the two flavors if it's #root and the first child is not an
+    // AST, otherwise leave it to the child AST to handle it, and there,
+    // use the (?:^|/) style of start binding.
+    //
+    // Even simplified further:
+    // - Since the start for a join is eg /(?!\.) and the start for a part
+    // is ^(?!\.), we can just prepend (?!\.) to the pattern (either root
+    // or start or whatever) and prepend ^ or / at the Regexp construction.
+    toRegExpSource(allowDot) {
+        const dot = allowDot ?? !!this.#options.dot;
+        if (this.#root === this) {
+            this.#flatten();
+            this.#fillNegs();
+        }
+        if (!isExtglobAST(this)) {
+            const noEmpty = this.isStart() &&
+                this.isEnd() &&
+                !this.#parts.some(s => typeof s !== 'string');
+            const src = this.#parts
+                .map(p => {
+                const [re, _, hasMagic, uflag] = typeof p === 'string' ?
+                    _a.#parseGlob(p, this.#hasMagic, noEmpty)
+                    : p.toRegExpSource(allowDot);
+                this.#hasMagic = this.#hasMagic || hasMagic;
+                this.#uflag = this.#uflag || uflag;
+                return re;
+            })
+                .join('');
+            let start = '';
+            if (this.isStart()) {
+                if (typeof this.#parts[0] === 'string') {
+                    // this is the string that will match the start of the pattern,
+                    // so we need to protect against dots and such.
+                    // '.' and '..' cannot match unless the pattern is that exactly,
+                    // even if it starts with . or dot:true is set.
+                    const dotTravAllowed = this.#parts.length === 1 && justDots.has(this.#parts[0]);
+                    if (!dotTravAllowed) {
+                        const aps = addPatternStart;
+                        // check if we have a possibility of matching . or ..,
+                        // and prevent that.
+                        const needNoTrav = 
+                        // dots are allowed, and the pattern starts with [ or .
+                        (dot && aps.has(src.charAt(0))) ||
+                            // the pattern starts with \., and then [ or .
+                            (src.startsWith('\\.') && aps.has(src.charAt(2))) ||
+                            // the pattern starts with \.\., and then [ or .
+                            (src.startsWith('\\.\\.') && aps.has(src.charAt(4)));
+                        // no need to prevent dots if it can't match a dot, or if a
+                        // sub-pattern will be preventing it anyway.
+                        const needNoDot = !dot && !allowDot && aps.has(src.charAt(0));
+                        start =
+                            needNoTrav ? startNoTraversal
+                                : needNoDot ? startNoDot
+                                    : '';
+                    }
+                }
+            }
+            // append the "end of path portion" pattern to negation tails
+            let end = '';
+            if (this.isEnd() &&
+                this.#root.#filledNegs &&
+                this.#parent?.type === '!') {
+                end = '(?:$|\\/)';
+            }
+            const final = start + src + end;
+            return [
+                final,
+                (0, unescape_js_1.unescape)(src),
+                (this.#hasMagic = !!this.#hasMagic),
+                this.#uflag,
+            ];
+        }
+        // We need to calculate the body *twice* if it's a repeat pattern
+        // at the start, once in nodot mode, then again in dot mode, so a
+        // pattern like *(?) can match 'x.y'
+        const repeated = this.type === '*' || this.type === '+';
+        // some kind of extglob
+        const start = this.type === '!' ? '(?:(?!(?:' : '(?:';
+        let body = this.#partsToRegExp(dot);
+        if (this.isStart() && this.isEnd() && !body && this.type !== '!') {
+            // invalid extglob, has to at least be *something* present, if it's
+            // the entire path portion.
+            const s = this.toString();
+            const me = this;
+            me.#parts = [s];
+            me.type = null;
+            me.#hasMagic = undefined;
+            return [s, (0, unescape_js_1.unescape)(this.toString()), false, false];
+        }
+        let bodyDotAllowed = !repeated || allowDot || dot || !startNoDot ?
+            ''
+            : this.#partsToRegExp(true);
+        if (bodyDotAllowed === body) {
+            bodyDotAllowed = '';
+        }
+        if (bodyDotAllowed) {
+            body = `(?:${body})(?:${bodyDotAllowed})*?`;
+        }
+        // an empty !() is exactly equivalent to a starNoEmpty
+        let final = '';
+        if (this.type === '!' && this.#emptyExt) {
+            final = (this.isStart() && !dot ? startNoDot : '') + starNoEmpty;
+        }
+        else {
+            const close = this.type === '!' ?
+                // !() must match something,but !(x) can match ''
+                '))' +
+                    (this.isStart() && !dot && !allowDot ? startNoDot : '') +
+                    star +
+                    ')'
+                : this.type === '@' ? ')'
+                    : this.type === '?' ? ')?'
+                        : this.type === '+' && bodyDotAllowed ? ')'
+                            : this.type === '*' && bodyDotAllowed ? `)?`
+                                : `)${this.type}`;
+            final = start + body + close;
+        }
+        return [
+            final,
+            (0, unescape_js_1.unescape)(body),
+            (this.#hasMagic = !!this.#hasMagic),
+            this.#uflag,
+        ];
+    }
+    #flatten() {
+        if (!isExtglobAST(this)) {
+            for (const p of this.#parts) {
+                if (typeof p === 'object') {
+                    p.#flatten();
+                }
+            }
+        }
+        else {
+            // do up to 10 passes to flatten as much as possible
+            let iterations = 0;
+            let done = false;
+            do {
+                done = true;
+                for (let i = 0; i < this.#parts.length; i++) {
+                    const c = this.#parts[i];
+                    if (typeof c === 'object') {
+                        c.#flatten();
+                        if (this.#canAdopt(c)) {
+                            done = false;
+                            this.#adopt(c, i);
+                        }
+                        else if (this.#canAdoptWithSpace(c)) {
+                            done = false;
+                            this.#adoptWithSpace(c, i);
+                        }
+                        else if (this.#canUsurp(c)) {
+                            done = false;
+                            this.#usurp(c);
+                        }
+                    }
+                }
+            } while (!done && ++iterations < 10);
+        }
+        this.#toString = undefined;
+    }
+    #partsToRegExp(dot) {
+        return this.#parts
+            .map(p => {
+            // extglob ASTs should only contain parent ASTs
+            /* c8 ignore start */
+            if (typeof p === 'string') {
+                throw new Error('string type in extglob ast??');
+            }
+            /* c8 ignore stop */
+            // can ignore hasMagic, because extglobs are already always magic
+            const [re, _, _hasMagic, uflag] = p.toRegExpSource(dot);
+            this.#uflag = this.#uflag || uflag;
+            return re;
+        })
+            .filter(p => !(this.isStart() && this.isEnd()) || !!p)
+            .join('|');
+    }
+    static #parseGlob(glob, hasMagic, noEmpty = false) {
+        let escaping = false;
+        let re = '';
+        let uflag = false;
+        // multiple stars that aren't globstars coalesce into one *
+        let inStar = false;
+        for (let i = 0; i < glob.length; i++) {
+            const c = glob.charAt(i);
+            if (escaping) {
+                escaping = false;
+                re += (reSpecials.has(c) ? '\\' : '') + c;
+                continue;
+            }
+            if (c === '*') {
+                if (inStar)
+                    continue;
+                inStar = true;
+                re += noEmpty && /^[*]+$/.test(glob) ? starNoEmpty : star;
+                hasMagic = true;
+                continue;
+            }
+            else {
+                inStar = false;
+            }
+            if (c === '\\') {
+                if (i === glob.length - 1) {
+                    re += '\\\\';
+                }
+                else {
+                    escaping = true;
+                }
+                continue;
+            }
+            if (c === '[') {
+                const [src, needUflag, consumed, magic] = (0, brace_expressions_js_1.parseClass)(glob, i);
+                if (consumed) {
+                    re += src;
+                    uflag = uflag || needUflag;
+                    i += consumed - 1;
+                    hasMagic = hasMagic || magic;
+                    continue;
+                }
+            }
+            if (c === '?') {
+                re += qmark;
+                hasMagic = true;
+                continue;
+            }
+            re += regExpEscape(c);
+        }
+        return [re, (0, unescape_js_1.unescape)(glob), !!hasMagic, uflag];
+    }
+}
+exports.AST = AST;
+_a = AST;
+//# sourceMappingURL=ast.js.map
+
+/***/ }),
+
+/***/ 7269:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+// translate the various posix character classes into unicode properties
+// this works across all unicode locales
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.parseClass = void 0;
+// { <posix class>: [<translation>, /u flag required, negated]
+const posixClasses = {
+    '[:alnum:]': ['\\p{L}\\p{Nl}\\p{Nd}', true],
+    '[:alpha:]': ['\\p{L}\\p{Nl}', true],
+    '[:ascii:]': ['\\x' + '00-\\x' + '7f', false],
+    '[:blank:]': ['\\p{Zs}\\t', true],
+    '[:cntrl:]': ['\\p{Cc}', true],
+    '[:digit:]': ['\\p{Nd}', true],
+    '[:graph:]': ['\\p{Z}\\p{C}', true, true],
+    '[:lower:]': ['\\p{Ll}', true],
+    '[:print:]': ['\\p{C}', true],
+    '[:punct:]': ['\\p{P}', true],
+    '[:space:]': ['\\p{Z}\\t\\r\\n\\v\\f', true],
+    '[:upper:]': ['\\p{Lu}', true],
+    '[:word:]': ['\\p{L}\\p{Nl}\\p{Nd}\\p{Pc}', true],
+    '[:xdigit:]': ['A-Fa-f0-9', false],
+};
+// only need to escape a few things inside of brace expressions
+// escapes: [ \ ] -
+const braceEscape = (s) => s.replace(/[[\]\\-]/g, '\\$&');
+// escape all regexp magic characters
+const regexpEscape = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+// everything has already been escaped, we just have to join
+const rangesToString = (ranges) => ranges.join('');
+// takes a glob string at a posix brace expression, and returns
+// an equivalent regular expression source, and boolean indicating
+// whether the /u flag needs to be applied, and the number of chars
+// consumed to parse the character class.
+// This also removes out of order ranges, and returns ($.) if the
+// entire class just no good.
+const parseClass = (glob, position) => {
+    const pos = position;
+    /* c8 ignore start */
+    if (glob.charAt(pos) !== '[') {
+        throw new Error('not in a brace expression');
+    }
+    /* c8 ignore stop */
+    const ranges = [];
+    const negs = [];
+    let i = pos + 1;
+    let sawStart = false;
+    let uflag = false;
+    let escaping = false;
+    let negate = false;
+    let endPos = pos;
+    let rangeStart = '';
+    WHILE: while (i < glob.length) {
+        const c = glob.charAt(i);
+        if ((c === '!' || c === '^') && i === pos + 1) {
+            negate = true;
+            i++;
+            continue;
+        }
+        if (c === ']' && sawStart && !escaping) {
+            endPos = i + 1;
+            break;
+        }
+        sawStart = true;
+        if (c === '\\') {
+            if (!escaping) {
+                escaping = true;
+                i++;
+                continue;
+            }
+            // escaped \ char, fall through and treat like normal char
+        }
+        if (c === '[' && !escaping) {
+            // either a posix class, a collation equivalent, or just a [
+            for (const [cls, [unip, u, neg]] of Object.entries(posixClasses)) {
+                if (glob.startsWith(cls, i)) {
+                    // invalid, [a-[] is fine, but not [a-[:alpha]]
+                    if (rangeStart) {
+                        return ['$.', false, glob.length - pos, true];
+                    }
+                    i += cls.length;
+                    if (neg)
+                        negs.push(unip);
+                    else
+                        ranges.push(unip);
+                    uflag = uflag || u;
+                    continue WHILE;
+                }
+            }
+        }
+        // now it's just a normal character, effectively
+        escaping = false;
+        if (rangeStart) {
+            // throw this range away if it's not valid, but others
+            // can still match.
+            if (c > rangeStart) {
+                ranges.push(braceEscape(rangeStart) + '-' + braceEscape(c));
+            }
+            else if (c === rangeStart) {
+                ranges.push(braceEscape(c));
+            }
+            rangeStart = '';
+            i++;
+            continue;
+        }
+        // now might be the start of a range.
+        // can be either c-d or c-] or c<more...>] or c] at this point
+        if (glob.startsWith('-]', i + 1)) {
+            ranges.push(braceEscape(c + '-'));
+            i += 2;
+            continue;
+        }
+        if (glob.startsWith('-', i + 1)) {
+            rangeStart = c;
+            i += 2;
+            continue;
+        }
+        // not the start of a range, just a single character
+        ranges.push(braceEscape(c));
+        i++;
+    }
+    if (endPos < i) {
+        // didn't see the end of the class, not a valid class,
+        // but might still be valid as a literal match.
+        return ['', false, 0, false];
+    }
+    // if we got no ranges and no negates, then we have a range that
+    // cannot possibly match anything, and that poisons the whole glob
+    if (!ranges.length && !negs.length) {
+        return ['$.', false, glob.length - pos, true];
+    }
+    // if we got one positive range, and it's a single character, then that's
+    // not actually a magic pattern, it's just that one literal character.
+    // we should not treat that as "magic", we should just return the literal
+    // character. [_] is a perfectly valid way to escape glob magic chars.
+    if (negs.length === 0 &&
+        ranges.length === 1 &&
+        /^\\?.$/.test(ranges[0]) &&
+        !negate) {
+        const r = ranges[0].length === 2 ? ranges[0].slice(-1) : ranges[0];
+        return [regexpEscape(r), false, endPos - pos, false];
+    }
+    const sranges = '[' + (negate ? '^' : '') + rangesToString(ranges) + ']';
+    const snegs = '[' + (negate ? '' : '^') + rangesToString(negs) + ']';
+    const comb = ranges.length && negs.length ? '(' + sranges + '|' + snegs + ')'
+        : ranges.length ? sranges
+            : snegs;
+    return [comb, uflag, endPos - pos, true];
+};
+exports.parseClass = parseClass;
+//# sourceMappingURL=brace-expressions.js.map
+
+/***/ }),
+
+/***/ 5525:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.escape = void 0;
+/**
+ * Escape all magic characters in a glob pattern.
+ *
+ * If the {@link MinimatchOptions.windowsPathsNoEscape}
+ * option is used, then characters are escaped by wrapping in `[]`, because
+ * a magic character wrapped in a character class can only be satisfied by
+ * that exact character.  In this mode, `\` is _not_ escaped, because it is
+ * not interpreted as a magic character, but instead as a path separator.
+ *
+ * If the {@link MinimatchOptions.magicalBraces} option is used,
+ * then braces (`{` and `}`) will be escaped.
+ */
+const escape = (s, { windowsPathsNoEscape = false, magicalBraces = false, } = {}) => {
+    // don't need to escape +@! because we escape the parens
+    // that make those magic, and escaping ! as [!] isn't valid,
+    // because [!]] is a valid glob class meaning not ']'.
+    if (magicalBraces) {
+        return windowsPathsNoEscape ?
+            s.replace(/[?*()[\]{}]/g, '[$&]')
+            : s.replace(/[?*()[\]\\{}]/g, '\\$&');
+    }
+    return windowsPathsNoEscape ?
+        s.replace(/[?*()[\]]/g, '[$&]')
+        : s.replace(/[?*()[\]\\]/g, '\\$&');
+};
+exports.escape = escape;
+//# sourceMappingURL=escape.js.map
+
+/***/ }),
+
+/***/ 1956:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.unescape = exports.escape = exports.AST = exports.Minimatch = exports.match = exports.makeRe = exports.braceExpand = exports.defaults = exports.filter = exports.GLOBSTAR = exports.sep = exports.minimatch = void 0;
+const brace_expansion_1 = __nccwpck_require__(3783);
+const assert_valid_pattern_js_1 = __nccwpck_require__(4460);
+const ast_js_1 = __nccwpck_require__(5044);
+const escape_js_1 = __nccwpck_require__(5525);
+const unescape_js_1 = __nccwpck_require__(8146);
+const minimatch = (p, pattern, options = {}) => {
+    (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
+    // shortcut: comments match nothing.
+    if (!options.nocomment && pattern.charAt(0) === '#') {
+        return false;
+    }
+    return new Minimatch(pattern, options).match(p);
+};
+exports.minimatch = minimatch;
+// Optimized checking for the most common glob patterns.
+const starDotExtRE = /^\*+([^+@!?*[(]*)$/;
+const starDotExtTest = (ext) => (f) => !f.startsWith('.') && f.endsWith(ext);
+const starDotExtTestDot = (ext) => (f) => f.endsWith(ext);
+const starDotExtTestNocase = (ext) => {
+    ext = ext.toLowerCase();
+    return (f) => !f.startsWith('.') && f.toLowerCase().endsWith(ext);
+};
+const starDotExtTestNocaseDot = (ext) => {
+    ext = ext.toLowerCase();
+    return (f) => f.toLowerCase().endsWith(ext);
+};
+const starDotStarRE = /^\*+\.\*+$/;
+const starDotStarTest = (f) => !f.startsWith('.') && f.includes('.');
+const starDotStarTestDot = (f) => f !== '.' && f !== '..' && f.includes('.');
+const dotStarRE = /^\.\*+$/;
+const dotStarTest = (f) => f !== '.' && f !== '..' && f.startsWith('.');
+const starRE = /^\*+$/;
+const starTest = (f) => f.length !== 0 && !f.startsWith('.');
+const starTestDot = (f) => f.length !== 0 && f !== '.' && f !== '..';
+const qmarksRE = /^\?+([^+@!?*[(]*)?$/;
+const qmarksTestNocase = ([$0, ext = '']) => {
+    const noext = qmarksTestNoExt([$0]);
+    if (!ext)
+        return noext;
+    ext = ext.toLowerCase();
+    return (f) => noext(f) && f.toLowerCase().endsWith(ext);
+};
+const qmarksTestNocaseDot = ([$0, ext = '']) => {
+    const noext = qmarksTestNoExtDot([$0]);
+    if (!ext)
+        return noext;
+    ext = ext.toLowerCase();
+    return (f) => noext(f) && f.toLowerCase().endsWith(ext);
+};
+const qmarksTestDot = ([$0, ext = '']) => {
+    const noext = qmarksTestNoExtDot([$0]);
+    return !ext ? noext : (f) => noext(f) && f.endsWith(ext);
+};
+const qmarksTest = ([$0, ext = '']) => {
+    const noext = qmarksTestNoExt([$0]);
+    return !ext ? noext : (f) => noext(f) && f.endsWith(ext);
+};
+const qmarksTestNoExt = ([$0]) => {
+    const len = $0.length;
+    return (f) => f.length === len && !f.startsWith('.');
+};
+const qmarksTestNoExtDot = ([$0]) => {
+    const len = $0.length;
+    return (f) => f.length === len && f !== '.' && f !== '..';
+};
+/* c8 ignore start */
+const defaultPlatform = (typeof process === 'object' && process ?
+    (typeof process.env === 'object' &&
+        process.env &&
+        process.env.__MINIMATCH_TESTING_PLATFORM__) ||
+        process.platform
+    : 'posix');
+const path = {
+    win32: { sep: '\\' },
+    posix: { sep: '/' },
+};
+/* c8 ignore stop */
+exports.sep = defaultPlatform === 'win32' ? path.win32.sep : path.posix.sep;
+exports.minimatch.sep = exports.sep;
+exports.GLOBSTAR = Symbol('globstar **');
+exports.minimatch.GLOBSTAR = exports.GLOBSTAR;
+// any single thing other than /
+// don't need to escape / when using new RegExp()
+const qmark = '[^/]';
+// * => any number of characters
+const star = qmark + '*?';
+// ** when dots are allowed.  Anything goes, except .. and .
+// not (^ or / followed by one or two dots followed by $ or /),
+// followed by anything, any number of times.
+const twoStarDot = '(?:(?!(?:\\/|^)(?:\\.{1,2})($|\\/)).)*?';
+// not a ^ or / followed by a dot,
+// followed by anything, any number of times.
+const twoStarNoDot = '(?:(?!(?:\\/|^)\\.).)*?';
+const filter = (pattern, options = {}) => (p) => (0, exports.minimatch)(p, pattern, options);
+exports.filter = filter;
+exports.minimatch.filter = exports.filter;
+const ext = (a, b = {}) => Object.assign({}, a, b);
+const defaults = (def) => {
+    if (!def || typeof def !== 'object' || !Object.keys(def).length) {
+        return exports.minimatch;
+    }
+    const orig = exports.minimatch;
+    const m = (p, pattern, options = {}) => orig(p, pattern, ext(def, options));
+    return Object.assign(m, {
+        Minimatch: class Minimatch extends orig.Minimatch {
+            constructor(pattern, options = {}) {
+                super(pattern, ext(def, options));
+            }
+            static defaults(options) {
+                return orig.defaults(ext(def, options)).Minimatch;
+            }
+        },
+        AST: class AST extends orig.AST {
+            /* c8 ignore start */
+            constructor(type, parent, options = {}) {
+                super(type, parent, ext(def, options));
+            }
+            /* c8 ignore stop */
+            static fromGlob(pattern, options = {}) {
+                return orig.AST.fromGlob(pattern, ext(def, options));
+            }
+        },
+        unescape: (s, options = {}) => orig.unescape(s, ext(def, options)),
+        escape: (s, options = {}) => orig.escape(s, ext(def, options)),
+        filter: (pattern, options = {}) => orig.filter(pattern, ext(def, options)),
+        defaults: (options) => orig.defaults(ext(def, options)),
+        makeRe: (pattern, options = {}) => orig.makeRe(pattern, ext(def, options)),
+        braceExpand: (pattern, options = {}) => orig.braceExpand(pattern, ext(def, options)),
+        match: (list, pattern, options = {}) => orig.match(list, pattern, ext(def, options)),
+        sep: orig.sep,
+        GLOBSTAR: exports.GLOBSTAR,
+    });
+};
+exports.defaults = defaults;
+exports.minimatch.defaults = exports.defaults;
+// Brace expansion:
+// a{b,c}d -> abd acd
+// a{b,}c -> abc ac
+// a{0..3}d -> a0d a1d a2d a3d
+// a{b,c{d,e}f}g -> abg acdfg acefg
+// a{b,c}d{e,f}g -> abdeg acdeg abdeg abdfg
+//
+// Invalid sets are not expanded.
+// a{2..}b -> a{2..}b
+// a{b}c -> a{b}c
+const braceExpand = (pattern, options = {}) => {
+    (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
+    // Thanks to Yeting Li <https://github.com/yetingli> for
+    // improving this regexp to avoid a ReDOS vulnerability.
+    if (options.nobrace || !/\{(?:(?!\{).)*\}/.test(pattern)) {
+        // shortcut. no need to expand.
+        return [pattern];
+    }
+    return (0, brace_expansion_1.expand)(pattern, { max: options.braceExpandMax });
+};
+exports.braceExpand = braceExpand;
+exports.minimatch.braceExpand = exports.braceExpand;
+// parse a component of the expanded set.
+// At this point, no pattern may contain "/" in it
+// so we're going to return a 2d array, where each entry is the full
+// pattern, split on '/', and then turned into a regular expression.
+// A regexp is made at the end which joins each array with an
+// escaped /, and another full one which joins each regexp with |.
+//
+// Following the lead of Bash 4.1, note that "**" only has special meaning
+// when it is the *only* thing in a path portion.  Otherwise, any series
+// of * is equivalent to a single *.  Globstar behavior is enabled by
+// default, and can be disabled by setting options.noglobstar.
+const makeRe = (pattern, options = {}) => new Minimatch(pattern, options).makeRe();
+exports.makeRe = makeRe;
+exports.minimatch.makeRe = exports.makeRe;
+const match = (list, pattern, options = {}) => {
+    const mm = new Minimatch(pattern, options);
+    list = list.filter(f => mm.match(f));
+    if (mm.options.nonull && !list.length) {
+        list.push(pattern);
+    }
+    return list;
+};
+exports.match = match;
+exports.minimatch.match = exports.match;
+// replace stuff like \* with *
+const globMagic = /[?*]|[+@!]\(.*?\)|\[|\]/;
+const regExpEscape = (s) => s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+class Minimatch {
+    options;
+    set;
+    pattern;
+    windowsPathsNoEscape;
+    nonegate;
+    negate;
+    comment;
+    empty;
+    preserveMultipleSlashes;
+    partial;
+    globSet;
+    globParts;
+    nocase;
+    isWindows;
+    platform;
+    windowsNoMagicRoot;
+    maxGlobstarRecursion;
+    regexp;
+    constructor(pattern, options = {}) {
+        (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
+        options = options || {};
+        this.options = options;
+        this.maxGlobstarRecursion = options.maxGlobstarRecursion ?? 200;
+        this.pattern = pattern;
+        this.platform = options.platform || defaultPlatform;
+        this.isWindows = this.platform === 'win32';
+        // avoid the annoying deprecation flag lol
+        const awe = ('allowWindow' + 'sEscape');
+        this.windowsPathsNoEscape =
+            !!options.windowsPathsNoEscape || options[awe] === false;
+        if (this.windowsPathsNoEscape) {
+            this.pattern = this.pattern.replace(/\\/g, '/');
+        }
+        this.preserveMultipleSlashes = !!options.preserveMultipleSlashes;
+        this.regexp = null;
+        this.negate = false;
+        this.nonegate = !!options.nonegate;
+        this.comment = false;
+        this.empty = false;
+        this.partial = !!options.partial;
+        this.nocase = !!this.options.nocase;
+        this.windowsNoMagicRoot =
+            options.windowsNoMagicRoot !== undefined ?
+                options.windowsNoMagicRoot
+                : !!(this.isWindows && this.nocase);
+        this.globSet = [];
+        this.globParts = [];
+        this.set = [];
+        // make the set of regexps etc.
+        this.make();
+    }
+    hasMagic() {
+        if (this.options.magicalBraces && this.set.length > 1) {
+            return true;
+        }
+        for (const pattern of this.set) {
+            for (const part of pattern) {
+                if (typeof part !== 'string')
+                    return true;
+            }
+        }
+        return false;
+    }
+    debug(..._) { }
+    make() {
+        const pattern = this.pattern;
+        const options = this.options;
+        // empty patterns and comments match nothing.
+        if (!options.nocomment && pattern.charAt(0) === '#') {
+            this.comment = true;
+            return;
+        }
+        if (!pattern) {
+            this.empty = true;
+            return;
+        }
+        // step 1: figure out negation, etc.
+        this.parseNegate();
+        // step 2: expand braces
+        this.globSet = [...new Set(this.braceExpand())];
+        if (options.debug) {
+            //oxlint-disable-next-line no-console
+            this.debug = (...args) => console.error(...args);
+        }
+        this.debug(this.pattern, this.globSet);
+        // step 3: now we have a set, so turn each one into a series of
+        // path-portion matching patterns.
+        // These will be regexps, except in the case of "**", which is
+        // set to the GLOBSTAR object for globstar behavior,
+        // and will not contain any / characters
+        //
+        // First, we preprocess to make the glob pattern sets a bit simpler
+        // and deduped.  There are some perf-killing patterns that can cause
+        // problems with a glob walk, but we can simplify them down a bit.
+        const rawGlobParts = this.globSet.map(s => this.slashSplit(s));
+        this.globParts = this.preprocess(rawGlobParts);
+        this.debug(this.pattern, this.globParts);
+        // glob --> regexps
+        let set = this.globParts.map((s, _, __) => {
+            if (this.isWindows && this.windowsNoMagicRoot) {
+                // check if it's a drive or unc path.
+                const isUNC = s[0] === '' &&
+                    s[1] === '' &&
+                    (s[2] === '?' || !globMagic.test(s[2])) &&
+                    !globMagic.test(s[3]);
+                const isDrive = /^[a-z]:/i.test(s[0]);
+                if (isUNC) {
+                    return [
+                        ...s.slice(0, 4),
+                        ...s.slice(4).map(ss => this.parse(ss)),
+                    ];
+                }
+                else if (isDrive) {
+                    return [s[0], ...s.slice(1).map(ss => this.parse(ss))];
+                }
+            }
+            return s.map(ss => this.parse(ss));
+        });
+        this.debug(this.pattern, set);
+        // filter out everything that didn't compile properly.
+        this.set = set.filter(s => s.indexOf(false) === -1);
+        // do not treat the ? in UNC paths as magic
+        if (this.isWindows) {
+            for (let i = 0; i < this.set.length; i++) {
+                const p = this.set[i];
+                if (p[0] === '' &&
+                    p[1] === '' &&
+                    this.globParts[i][2] === '?' &&
+                    typeof p[3] === 'string' &&
+                    /^[a-z]:$/i.test(p[3])) {
+                    p[2] = '?';
+                }
+            }
+        }
+        this.debug(this.pattern, this.set);
+    }
+    // various transforms to equivalent pattern sets that are
+    // faster to process in a filesystem walk.  The goal is to
+    // eliminate what we can, and push all ** patterns as far
+    // to the right as possible, even if it increases the number
+    // of patterns that we have to process.
+    preprocess(globParts) {
+        // if we're not in globstar mode, then turn ** into *
+        if (this.options.noglobstar) {
+            for (const partset of globParts) {
+                for (let j = 0; j < partset.length; j++) {
+                    if (partset[j] === '**') {
+                        partset[j] = '*';
+                    }
+                }
+            }
+        }
+        const { optimizationLevel = 1 } = this.options;
+        if (optimizationLevel >= 2) {
+            // aggressive optimization for the purpose of fs walking
+            globParts = this.firstPhasePreProcess(globParts);
+            globParts = this.secondPhasePreProcess(globParts);
+        }
+        else if (optimizationLevel >= 1) {
+            // just basic optimizations to remove some .. parts
+            globParts = this.levelOneOptimize(globParts);
+        }
+        else {
+            // just collapse multiple ** portions into one
+            globParts = this.adjascentGlobstarOptimize(globParts);
+        }
+        return globParts;
+    }
+    // just get rid of adjascent ** portions
+    adjascentGlobstarOptimize(globParts) {
+        return globParts.map(parts => {
+            let gs = -1;
+            while (-1 !== (gs = parts.indexOf('**', gs + 1))) {
+                let i = gs;
+                while (parts[i + 1] === '**') {
+                    i++;
+                }
+                if (i !== gs) {
+                    parts.splice(gs, i - gs);
+                }
+            }
+            return parts;
+        });
+    }
+    // get rid of adjascent ** and resolve .. portions
+    levelOneOptimize(globParts) {
+        return globParts.map(parts => {
+            parts = parts.reduce((set, part) => {
+                const prev = set[set.length - 1];
+                if (part === '**' && prev === '**') {
+                    return set;
+                }
+                if (part === '..') {
+                    if (prev && prev !== '..' && prev !== '.' && prev !== '**') {
+                        set.pop();
+                        return set;
+                    }
+                }
+                set.push(part);
+                return set;
+            }, []);
+            return parts.length === 0 ? [''] : parts;
+        });
+    }
+    levelTwoFileOptimize(parts) {
+        if (!Array.isArray(parts)) {
+            parts = this.slashSplit(parts);
+        }
+        let didSomething = false;
+        do {
+            didSomething = false;
+            // <pre>/<e>/<rest> -> <pre>/<rest>
+            if (!this.preserveMultipleSlashes) {
+                for (let i = 1; i < parts.length - 1; i++) {
+                    const p = parts[i];
+                    // don't squeeze out UNC patterns
+                    if (i === 1 && p === '' && parts[0] === '')
+                        continue;
+                    if (p === '.' || p === '') {
+                        didSomething = true;
+                        parts.splice(i, 1);
+                        i--;
+                    }
+                }
+                if (parts[0] === '.' &&
+                    parts.length === 2 &&
+                    (parts[1] === '.' || parts[1] === '')) {
+                    didSomething = true;
+                    parts.pop();
+                }
+            }
+            // <pre>/<p>/../<rest> -> <pre>/<rest>
+            let dd = 0;
+            while (-1 !== (dd = parts.indexOf('..', dd + 1))) {
+                const p = parts[dd - 1];
+                if (p &&
+                    p !== '.' &&
+                    p !== '..' &&
+                    p !== '**' &&
+                    !(this.isWindows && /^[a-z]:$/i.test(p))) {
+                    didSomething = true;
+                    parts.splice(dd - 1, 2);
+                    dd -= 2;
+                }
+            }
+        } while (didSomething);
+        return parts.length === 0 ? [''] : parts;
+    }
+    // First phase: single-pattern processing
+    // <pre> is 1 or more portions
+    // <rest> is 1 or more portions
+    // <p> is any portion other than ., .., '', or **
+    // <e> is . or ''
+    //
+    // **/.. is *brutal* for filesystem walking performance, because
+    // it effectively resets the recursive walk each time it occurs,
+    // and ** cannot be reduced out by a .. pattern part like a regexp
+    // or most strings (other than .., ., and '') can be.
+    //
+    // <pre>/**/../<p>/<p>/<rest> -> {<pre>/../<p>/<p>/<rest>,<pre>/**/<p>/<p>/<rest>}
+    // <pre>/<e>/<rest> -> <pre>/<rest>
+    // <pre>/<p>/../<rest> -> <pre>/<rest>
+    // **/**/<rest> -> **/<rest>
+    //
+    // **/*/<rest> -> */**/<rest> <== not valid because ** doesn't follow
+    // this WOULD be allowed if ** did follow symlinks, or * didn't
+    firstPhasePreProcess(globParts) {
+        let didSomething = false;
+        do {
+            didSomething = false;
+            // <pre>/**/../<p>/<p>/<rest> -> {<pre>/../<p>/<p>/<rest>,<pre>/**/<p>/<p>/<rest>}
+            for (let parts of globParts) {
+                let gs = -1;
+                while (-1 !== (gs = parts.indexOf('**', gs + 1))) {
+                    let gss = gs;
+                    while (parts[gss + 1] === '**') {
+                        // <pre>/**/**/<rest> -> <pre>/**/<rest>
+                        gss++;
+                    }
+                    // eg, if gs is 2 and gss is 4, that means we have 3 **
+                    // parts, and can remove 2 of them.
+                    if (gss > gs) {
+                        parts.splice(gs + 1, gss - gs);
+                    }
+                    let next = parts[gs + 1];
+                    const p = parts[gs + 2];
+                    const p2 = parts[gs + 3];
+                    if (next !== '..')
+                        continue;
+                    if (!p ||
+                        p === '.' ||
+                        p === '..' ||
+                        !p2 ||
+                        p2 === '.' ||
+                        p2 === '..') {
+                        continue;
+                    }
+                    didSomething = true;
+                    // edit parts in place, and push the new one
+                    parts.splice(gs, 1);
+                    const other = parts.slice(0);
+                    other[gs] = '**';
+                    globParts.push(other);
+                    gs--;
+                }
+                // <pre>/<e>/<rest> -> <pre>/<rest>
+                if (!this.preserveMultipleSlashes) {
+                    for (let i = 1; i < parts.length - 1; i++) {
+                        const p = parts[i];
+                        // don't squeeze out UNC patterns
+                        if (i === 1 && p === '' && parts[0] === '')
+                            continue;
+                        if (p === '.' || p === '') {
+                            didSomething = true;
+                            parts.splice(i, 1);
+                            i--;
+                        }
+                    }
+                    if (parts[0] === '.' &&
+                        parts.length === 2 &&
+                        (parts[1] === '.' || parts[1] === '')) {
+                        didSomething = true;
+                        parts.pop();
+                    }
+                }
+                // <pre>/<p>/../<rest> -> <pre>/<rest>
+                let dd = 0;
+                while (-1 !== (dd = parts.indexOf('..', dd + 1))) {
+                    const p = parts[dd - 1];
+                    if (p && p !== '.' && p !== '..' && p !== '**') {
+                        didSomething = true;
+                        const needDot = dd === 1 && parts[dd + 1] === '**';
+                        const splin = needDot ? ['.'] : [];
+                        parts.splice(dd - 1, 2, ...splin);
+                        if (parts.length === 0)
+                            parts.push('');
+                        dd -= 2;
+                    }
+                }
+            }
+        } while (didSomething);
+        return globParts;
+    }
+    // second phase: multi-pattern dedupes
+    // {<pre>/*/<rest>,<pre>/<p>/<rest>} -> <pre>/*/<rest>
+    // {<pre>/<rest>,<pre>/<rest>} -> <pre>/<rest>
+    // {<pre>/**/<rest>,<pre>/<rest>} -> <pre>/**/<rest>
+    //
+    // {<pre>/**/<rest>,<pre>/**/<p>/<rest>} -> <pre>/**/<rest>
+    // ^-- not valid because ** doens't follow symlinks
+    secondPhasePreProcess(globParts) {
+        for (let i = 0; i < globParts.length - 1; i++) {
+            for (let j = i + 1; j < globParts.length; j++) {
+                const matched = this.partsMatch(globParts[i], globParts[j], !this.preserveMultipleSlashes);
+                if (matched) {
+                    globParts[i] = [];
+                    globParts[j] = matched;
+                    break;
+                }
+            }
+        }
+        return globParts.filter(gs => gs.length);
+    }
+    partsMatch(a, b, emptyGSMatch = false) {
+        let ai = 0;
+        let bi = 0;
+        let result = [];
+        let which = '';
+        while (ai < a.length && bi < b.length) {
+            if (a[ai] === b[bi]) {
+                result.push(which === 'b' ? b[bi] : a[ai]);
+                ai++;
+                bi++;
+            }
+            else if (emptyGSMatch && a[ai] === '**' && b[bi] === a[ai + 1]) {
+                result.push(a[ai]);
+                ai++;
+            }
+            else if (emptyGSMatch && b[bi] === '**' && a[ai] === b[bi + 1]) {
+                result.push(b[bi]);
+                bi++;
+            }
+            else if (a[ai] === '*' &&
+                b[bi] &&
+                (this.options.dot || !b[bi].startsWith('.')) &&
+                b[bi] !== '**') {
+                if (which === 'b')
+                    return false;
+                which = 'a';
+                result.push(a[ai]);
+                ai++;
+                bi++;
+            }
+            else if (b[bi] === '*' &&
+                a[ai] &&
+                (this.options.dot || !a[ai].startsWith('.')) &&
+                a[ai] !== '**') {
+                if (which === 'a')
+                    return false;
+                which = 'b';
+                result.push(b[bi]);
+                ai++;
+                bi++;
+            }
+            else {
+                return false;
+            }
+        }
+        // if we fall out of the loop, it means they two are identical
+        // as long as their lengths match
+        return a.length === b.length && result;
+    }
+    parseNegate() {
+        if (this.nonegate)
+            return;
+        const pattern = this.pattern;
+        let negate = false;
+        let negateOffset = 0;
+        for (let i = 0; i < pattern.length && pattern.charAt(i) === '!'; i++) {
+            negate = !negate;
+            negateOffset++;
+        }
+        if (negateOffset)
+            this.pattern = pattern.slice(negateOffset);
+        this.negate = negate;
+    }
+    // set partial to true to test if, for example,
+    // "/a/b" matches the start of "/*/b/*/d"
+    // Partial means, if you run out of file before you run
+    // out of pattern, then that's fine, as long as all
+    // the parts match.
+    matchOne(file, pattern, partial = false) {
+        let fileStartIndex = 0;
+        let patternStartIndex = 0;
+        // UNC paths like //?/X:/... can match X:/... and vice versa
+        // Drive letters in absolute drive or unc paths are always compared
+        // case-insensitively.
+        if (this.isWindows) {
+            const fileDrive = typeof file[0] === 'string' && /^[a-z]:$/i.test(file[0]);
+            const fileUNC = !fileDrive &&
+                file[0] === '' &&
+                file[1] === '' &&
+                file[2] === '?' &&
+                /^[a-z]:$/i.test(file[3]);
+            const patternDrive = typeof pattern[0] === 'string' && /^[a-z]:$/i.test(pattern[0]);
+            const patternUNC = !patternDrive &&
+                pattern[0] === '' &&
+                pattern[1] === '' &&
+                pattern[2] === '?' &&
+                typeof pattern[3] === 'string' &&
+                /^[a-z]:$/i.test(pattern[3]);
+            const fdi = fileUNC ? 3
+                : fileDrive ? 0
+                    : undefined;
+            const pdi = patternUNC ? 3
+                : patternDrive ? 0
+                    : undefined;
+            if (typeof fdi === 'number' && typeof pdi === 'number') {
+                const [fd, pd] = [
+                    file[fdi],
+                    pattern[pdi],
+                ];
+                // start matching at the drive letter index of each
+                if (fd.toLowerCase() === pd.toLowerCase()) {
+                    pattern[pdi] = fd;
+                    patternStartIndex = pdi;
+                    fileStartIndex = fdi;
+                }
+            }
+        }
+        // resolve and reduce . and .. portions in the file as well.
+        // don't need to do the second phase, because it's only one string[]
+        const { optimizationLevel = 1 } = this.options;
+        if (optimizationLevel >= 2) {
+            file = this.levelTwoFileOptimize(file);
+        }
+        if (pattern.includes(exports.GLOBSTAR)) {
+            return this.#matchGlobstar(file, pattern, partial, fileStartIndex, patternStartIndex);
+        }
+        return this.#matchOne(file, pattern, partial, fileStartIndex, patternStartIndex);
+    }
+    #matchGlobstar(file, pattern, partial, fileIndex, patternIndex) {
+        // split the pattern into head, tail, and middle of ** delimited parts
+        const firstgs = pattern.indexOf(exports.GLOBSTAR, patternIndex);
+        const lastgs = pattern.lastIndexOf(exports.GLOBSTAR);
+        // split the pattern up into globstar-delimited sections
+        // the tail has to be at the end, and the others just have
+        // to be found in order from the head.
+        const [head, body, tail] = partial ?
+            [
+                pattern.slice(patternIndex, firstgs),
+                pattern.slice(firstgs + 1),
+                [],
+            ]
+            : [
+                pattern.slice(patternIndex, firstgs),
+                pattern.slice(firstgs + 1, lastgs),
+                pattern.slice(lastgs + 1),
+            ];
+        // check the head, from the current file/pattern index.
+        if (head.length) {
+            const fileHead = file.slice(fileIndex, fileIndex + head.length);
+            if (!this.#matchOne(fileHead, head, partial, 0, 0)) {
+                return false;
+            }
+            fileIndex += head.length;
+            patternIndex += head.length;
+        }
+        // now we know the head matches!
+        // if the last portion is not empty, it MUST match the end
+        // check the tail
+        let fileTailMatch = 0;
+        if (tail.length) {
+            // if head + tail > file, then we cannot possibly match
+            if (tail.length + fileIndex > file.length)
+                return false;
+            // try to match the tail
+            let tailStart = file.length - tail.length;
+            if (this.#matchOne(file, tail, partial, tailStart, 0)) {
+                fileTailMatch = tail.length;
+            }
+            else {
+                // affordance for stuff like a/**/* matching a/b/
+                // if the last file portion is '', and there's more to the pattern
+                // then try without the '' bit.
+                if (file[file.length - 1] !== '' ||
+                    fileIndex + tail.length === file.length) {
+                    return false;
+                }
+                tailStart--;
+                if (!this.#matchOne(file, tail, partial, tailStart, 0)) {
+                    return false;
+                }
+                fileTailMatch = tail.length + 1;
+            }
+        }
+        // now we know the tail matches!
+        // the middle is zero or more portions wrapped in **, possibly
+        // containing more ** sections.
+        // so a/**/b/**/c/**/d has become **/b/**/c/**
+        // if it's empty, it means a/**/b, just verify we have no bad dots
+        // if there's no tail, so it ends on /**, then we must have *something*
+        // after the head, or it's not a matc
+        if (!body.length) {
+            let sawSome = !!fileTailMatch;
+            for (let i = fileIndex; i < file.length - fileTailMatch; i++) {
+                const f = String(file[i]);
+                sawSome = true;
+                if (f === '.' ||
+                    f === '..' ||
+                    (!this.options.dot && f.startsWith('.'))) {
+                    return false;
+                }
+            }
+            // in partial mode, we just need to get past all file parts
+            return partial || sawSome;
+        }
+        // now we know that there's one or more body sections, which can
+        // be matched anywhere from the 0 index (because the head was pruned)
+        // through to the length-fileTailMatch index.
+        // split the body up into sections, and note the minimum index it can
+        // be found at (start with the length of all previous segments)
+        // [section, before, after]
+        const bodySegments = [[[], 0]];
+        let currentBody = bodySegments[0];
+        let nonGsParts = 0;
+        const nonGsPartsSums = [0];
+        for (const b of body) {
+            if (b === exports.GLOBSTAR) {
+                nonGsPartsSums.push(nonGsParts);
+                currentBody = [[], 0];
+                bodySegments.push(currentBody);
+            }
+            else {
+                currentBody[0].push(b);
+                nonGsParts++;
+            }
+        }
+        let i = bodySegments.length - 1;
+        const fileLength = file.length - fileTailMatch;
+        for (const b of bodySegments) {
+            b[1] = fileLength - (nonGsPartsSums[i--] + b[0].length);
+        }
+        return !!this.#matchGlobStarBodySections(file, bodySegments, fileIndex, 0, partial, 0, !!fileTailMatch);
+    }
+    // return false for "nope, not matching"
+    // return null for "not matching, cannot keep trying"
+    #matchGlobStarBodySections(file, 
+    // pattern section, last possible position for it
+    bodySegments, fileIndex, bodyIndex, partial, globStarDepth, sawTail) {
+        // take the first body segment, and walk from fileIndex to its "after"
+        // value at the end
+        // If it doesn't match at that position, we increment, until we hit
+        // that final possible position, and give up.
+        // If it does match, then advance and try to rest.
+        // If any of them fail we keep walking forward.
+        // this is still a bit recursively painful, but it's more constrained
+        // than previous implementations, because we never test something that
+        // can't possibly be a valid matching condition.
+        const bs = bodySegments[bodyIndex];
+        if (!bs) {
+            // just make sure that there's no bad dots
+            for (let i = fileIndex; i < file.length; i++) {
+                sawTail = true;
+                const f = file[i];
+                if (f === '.' ||
+                    f === '..' ||
+                    (!this.options.dot && f.startsWith('.'))) {
+                    return false;
+                }
+            }
+            return sawTail;
+        }
+        // have a non-globstar body section to test
+        const [body, after] = bs;
+        while (fileIndex <= after) {
+            const m = this.#matchOne(file.slice(0, fileIndex + body.length), body, partial, fileIndex, 0);
+            // if limit exceeded, no match. intentional false negative,
+            // acceptable break in correctness for security.
+            if (m && globStarDepth < this.maxGlobstarRecursion) {
+                // match! see if the rest match. if so, we're done!
+                const sub = this.#matchGlobStarBodySections(file, bodySegments, fileIndex + body.length, bodyIndex + 1, partial, globStarDepth + 1, sawTail);
+                if (sub !== false) {
+                    return sub;
+                }
+            }
+            const f = file[fileIndex];
+            if (f === '.' ||
+                f === '..' ||
+                (!this.options.dot && f.startsWith('.'))) {
+                return false;
+            }
+            fileIndex++;
+        }
+        // walked off. no point continuing
+        return partial || null;
+    }
+    #matchOne(file, pattern, partial, fileIndex, patternIndex) {
+        let fi;
+        let pi;
+        let pl;
+        let fl;
+        for (fi = fileIndex,
+            pi = patternIndex,
+            fl = file.length,
+            pl = pattern.length; fi < fl && pi < pl; fi++, pi++) {
+            this.debug('matchOne loop');
+            let p = pattern[pi];
+            let f = file[fi];
+            this.debug(pattern, p, f);
+            // should be impossible.
+            // some invalid regexp stuff in the set.
+            /* c8 ignore start */
+            if (p === false || p === exports.GLOBSTAR) {
+                return false;
+            }
+            /* c8 ignore stop */
+            // something other than **
+            // non-magic patterns just have to match exactly
+            // patterns with magic have been turned into regexps.
+            let hit;
+            if (typeof p === 'string') {
+                hit = f === p;
+                this.debug('string match', p, f, hit);
+            }
+            else {
+                hit = p.test(f);
+                this.debug('pattern match', p, f, hit);
+            }
+            if (!hit)
+                return false;
+        }
+        // Note: ending in / means that we'll get a final ""
+        // at the end of the pattern.  This can only match a
+        // corresponding "" at the end of the file.
+        // If the file ends in /, then it can only match a
+        // a pattern that ends in /, unless the pattern just
+        // doesn't have any more for it. But, a/b/ should *not*
+        // match "a/b/*", even though "" matches against the
+        // [^/]*? pattern, except in partial mode, where it might
+        // simply not be reached yet.
+        // However, a/b/ should still satisfy a/*
+        // now either we fell off the end of the pattern, or we're done.
+        if (fi === fl && pi === pl) {
+            // ran out of pattern and filename at the same time.
+            // an exact hit!
+            return true;
+        }
+        else if (fi === fl) {
+            // ran out of file, but still had pattern left.
+            // this is ok if we're doing the match as part of
+            // a glob fs traversal.
+            return partial;
+        }
+        else if (pi === pl) {
+            // ran out of pattern, still have file left.
+            // this is only acceptable if we're on the very last
+            // empty segment of a file with a trailing slash.
+            // a/* should match a/b/
+            return fi === fl - 1 && file[fi] === '';
+            /* c8 ignore start */
+        }
+        else {
+            // should be unreachable.
+            throw new Error('wtf?');
+        }
+        /* c8 ignore stop */
+    }
+    braceExpand() {
+        return (0, exports.braceExpand)(this.pattern, this.options);
+    }
+    parse(pattern) {
+        (0, assert_valid_pattern_js_1.assertValidPattern)(pattern);
+        const options = this.options;
+        // shortcuts
+        if (pattern === '**')
+            return exports.GLOBSTAR;
+        if (pattern === '')
+            return '';
+        // far and away, the most common glob pattern parts are
+        // *, *.*, and *.<ext>  Add a fast check method for those.
+        let m;
+        let fastTest = null;
+        if ((m = pattern.match(starRE))) {
+            fastTest = options.dot ? starTestDot : starTest;
+        }
+        else if ((m = pattern.match(starDotExtRE))) {
+            fastTest = (options.nocase ?
+                options.dot ?
+                    starDotExtTestNocaseDot
+                    : starDotExtTestNocase
+                : options.dot ? starDotExtTestDot
+                    : starDotExtTest)(m[1]);
+        }
+        else if ((m = pattern.match(qmarksRE))) {
+            fastTest = (options.nocase ?
+                options.dot ?
+                    qmarksTestNocaseDot
+                    : qmarksTestNocase
+                : options.dot ? qmarksTestDot
+                    : qmarksTest)(m);
+        }
+        else if ((m = pattern.match(starDotStarRE))) {
+            fastTest = options.dot ? starDotStarTestDot : starDotStarTest;
+        }
+        else if ((m = pattern.match(dotStarRE))) {
+            fastTest = dotStarTest;
+        }
+        const re = ast_js_1.AST.fromGlob(pattern, this.options).toMMPattern();
+        if (fastTest && typeof re === 'object') {
+            // Avoids overriding in frozen environments
+            Reflect.defineProperty(re, 'test', { value: fastTest });
+        }
+        return re;
+    }
+    makeRe() {
+        if (this.regexp || this.regexp === false)
+            return this.regexp;
+        // at this point, this.set is a 2d array of partial
+        // pattern strings, or "**".
+        //
+        // It's better to use .match().  This function shouldn't
+        // be used, really, but it's pretty convenient sometimes,
+        // when you just want to work with a regex.
+        const set = this.set;
+        if (!set.length) {
+            this.regexp = false;
+            return this.regexp;
+        }
+        const options = this.options;
+        const twoStar = options.noglobstar ? star
+            : options.dot ? twoStarDot
+                : twoStarNoDot;
+        const flags = new Set(options.nocase ? ['i'] : []);
+        // regexpify non-globstar patterns
+        // if ** is only item, then we just do one twoStar
+        // if ** is first, and there are more, prepend (\/|twoStar\/)? to next
+        // if ** is last, append (\/twoStar|) to previous
+        // if ** is in the middle, append (\/|\/twoStar\/) to previous
+        // then filter out GLOBSTAR symbols
+        let re = set
+            .map(pattern => {
+            const pp = pattern.map(p => {
+                if (p instanceof RegExp) {
+                    for (const f of p.flags.split(''))
+                        flags.add(f);
+                }
+                return (typeof p === 'string' ? regExpEscape(p)
+                    : p === exports.GLOBSTAR ? exports.GLOBSTAR
+                        : p._src);
+            });
+            pp.forEach((p, i) => {
+                const next = pp[i + 1];
+                const prev = pp[i - 1];
+                if (p !== exports.GLOBSTAR || prev === exports.GLOBSTAR) {
+                    return;
+                }
+                if (prev === undefined) {
+                    if (next !== undefined && next !== exports.GLOBSTAR) {
+                        pp[i + 1] = '(?:\\/|' + twoStar + '\\/)?' + next;
+                    }
+                    else {
+                        pp[i] = twoStar;
+                    }
+                }
+                else if (next === undefined) {
+                    pp[i - 1] = prev + '(?:\\/|\\/' + twoStar + ')?';
+                }
+                else if (next !== exports.GLOBSTAR) {
+                    pp[i - 1] = prev + '(?:\\/|\\/' + twoStar + '\\/)' + next;
+                    pp[i + 1] = exports.GLOBSTAR;
+                }
+            });
+            const filtered = pp.filter(p => p !== exports.GLOBSTAR);
+            // For partial matches, we need to make the pattern match
+            // any prefix of the full path. We do this by generating
+            // alternative patterns that match progressively longer prefixes.
+            if (this.partial && filtered.length >= 1) {
+                const prefixes = [];
+                for (let i = 1; i <= filtered.length; i++) {
+                    prefixes.push(filtered.slice(0, i).join('/'));
+                }
+                return '(?:' + prefixes.join('|') + ')';
+            }
+            return filtered.join('/');
+        })
+            .join('|');
+        // need to wrap in parens if we had more than one thing with |,
+        // otherwise only the first will be anchored to ^ and the last to $
+        const [open, close] = set.length > 1 ? ['(?:', ')'] : ['', ''];
+        // must match entire pattern
+        // ending in a * or ** will make it less strict.
+        re = '^' + open + re + close + '$';
+        // In partial mode, '/' should always match as it's a valid prefix for any pattern
+        if (this.partial) {
+            re = '^(?:\\/|' + open + re.slice(1, -1) + close + ')$';
+        }
+        // can match anything, as long as it's not this.
+        if (this.negate)
+            re = '^(?!' + re + ').+$';
+        try {
+            this.regexp = new RegExp(re, [...flags].join(''));
+            /* c8 ignore start */
+        }
+        catch {
+            // should be impossible
+            this.regexp = false;
+        }
+        /* c8 ignore stop */
+        return this.regexp;
+    }
+    slashSplit(p) {
+        // if p starts with // on windows, we preserve that
+        // so that UNC paths aren't broken.  Otherwise, any number of
+        // / characters are coalesced into one, unless
+        // preserveMultipleSlashes is set to true.
+        if (this.preserveMultipleSlashes) {
+            return p.split('/');
+        }
+        else if (this.isWindows && /^\/\/[^/]+/.test(p)) {
+            // add an extra '' for the one we lose
+            return ['', ...p.split(/\/+/)];
+        }
+        else {
+            return p.split(/\/+/);
+        }
+    }
+    match(f, partial = this.partial) {
+        this.debug('match', f, this.pattern);
+        // short-circuit in the case of busted things.
+        // comments, etc.
+        if (this.comment) {
+            return false;
+        }
+        if (this.empty) {
+            return f === '';
+        }
+        if (f === '/' && partial) {
+            return true;
+        }
+        const options = this.options;
+        // windows: need to use /, not \
+        if (this.isWindows) {
+            f = f.split('\\').join('/');
+        }
+        // treat the test path as a set of pathparts.
+        const ff = this.slashSplit(f);
+        this.debug(this.pattern, 'split', ff);
+        // just ONE of the pattern sets in this.set needs to match
+        // in order for it to be valid.  If negating, then just one
+        // match means that we have failed.
+        // Either way, return on the first hit.
+        const set = this.set;
+        this.debug(this.pattern, 'set', set);
+        // Find the basename of the path by looking for the last non-empty segment
+        let filename = ff[ff.length - 1];
+        if (!filename) {
+            for (let i = ff.length - 2; !filename && i >= 0; i--) {
+                filename = ff[i];
+            }
+        }
+        for (const pattern of set) {
+            let file = ff;
+            if (options.matchBase && pattern.length === 1) {
+                file = [filename];
+            }
+            const hit = this.matchOne(file, pattern, partial);
+            if (hit) {
+                if (options.flipNegate) {
+                    return true;
+                }
+                return !this.negate;
+            }
+        }
+        // didn't get any hits.  this is success if it's a negative
+        // pattern, failure otherwise.
+        if (options.flipNegate) {
+            return false;
+        }
+        return this.negate;
+    }
+    static defaults(def) {
+        return exports.minimatch.defaults(def).Minimatch;
+    }
+}
+exports.Minimatch = Minimatch;
+/* c8 ignore start */
+var ast_js_2 = __nccwpck_require__(5044);
+Object.defineProperty(exports, "AST", ({ enumerable: true, get: function () { return ast_js_2.AST; } }));
+var escape_js_2 = __nccwpck_require__(5525);
+Object.defineProperty(exports, "escape", ({ enumerable: true, get: function () { return escape_js_2.escape; } }));
+var unescape_js_2 = __nccwpck_require__(8146);
+Object.defineProperty(exports, "unescape", ({ enumerable: true, get: function () { return unescape_js_2.unescape; } }));
+/* c8 ignore stop */
+exports.minimatch.AST = ast_js_1.AST;
+exports.minimatch.Minimatch = Minimatch;
+exports.minimatch.escape = escape_js_1.escape;
+exports.minimatch.unescape = unescape_js_1.unescape;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 8146:
+/***/ ((__unused_webpack_module, exports) => {
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.unescape = void 0;
+/**
+ * Un-escape a string that has been escaped with {@link escape}.
+ *
+ * If the {@link MinimatchOptions.windowsPathsNoEscape} option is used, then
+ * square-bracket escapes are removed, but not backslash escapes.
+ *
+ * For example, it will turn the string `'[*]'` into `*`, but it will not
+ * turn `'\\*'` into `'*'`, because `\` is a path separator in
+ * `windowsPathsNoEscape` mode.
+ *
+ * When `windowsPathsNoEscape` is not set, then both square-bracket escapes and
+ * backslash escapes are removed.
+ *
+ * Slashes (and backslashes in `windowsPathsNoEscape` mode) cannot be escaped
+ * or unescaped.
+ *
+ * When `magicalBraces` is not set, escapes of braces (`{` and `}`) will not be
+ * unescaped.
+ */
+const unescape = (s, { windowsPathsNoEscape = false, magicalBraces = true, } = {}) => {
+    if (magicalBraces) {
+        return windowsPathsNoEscape ?
+            s.replace(/\[([^/\\])\]/g, '$1')
+            : s
+                .replace(/((?!\\).|^)\[([^/\\])\]/g, '$1$2')
+                .replace(/\\([^/])/g, '$1');
+    }
+    return windowsPathsNoEscape ?
+        s.replace(/\[([^/\\{}])\]/g, '$1')
+        : s
+            .replace(/((?!\\).|^)\[([^/\\{}])\]/g, '$1$2')
+            .replace(/\\([^/{}])/g, '$1');
+};
+exports.unescape = unescape;
+//# sourceMappingURL=unescape.js.map
 
 /***/ }),
 
@@ -42626,16 +54904,37 @@ __webpack_unused_export__ = defaultContentType
 // ESLint rules and doesn't work reliably across all Node.js versions.
 // By keeping this as a .cjs file, we can use require() naturally and export
 // the version for the ESM modules to import.
-const packageJson = __nccwpck_require__(4012)
+const packageJson = __nccwpck_require__(1631)
 module.exports = { version: packageJson.version }
 
 
 /***/ }),
 
-/***/ 4012:
+/***/ 1631:
 /***/ ((module) => {
 
 module.exports = /*#__PURE__*/JSON.parse('{"name":"@actions/cache","version":"6.3.0","description":"Actions cache lib","keywords":["github","actions","cache"],"homepage":"https://github.com/actions/toolkit/tree/main/packages/cache","license":"MIT","type":"module","main":"lib/cache.js","types":"lib/cache.d.ts","exports":{".":{"types":"./lib/cache.d.ts","import":"./lib/cache.js"}},"directories":{"lib":"lib","test":"__tests__"},"files":["lib","!.DS_Store"],"publishConfig":{"access":"public"},"repository":{"type":"git","url":"git+https://github.com/actions/toolkit.git","directory":"packages/cache"},"scripts":{"audit-moderate":"npm install && npm audit --json --audit-level=moderate > audit.json","test":"echo \\"Error: run tests from root\\" && exit 1","tsc":"tsc && cp src/internal/shared/package-version.cjs lib/internal/shared/"},"bugs":{"url":"https://github.com/actions/toolkit/issues"},"dependencies":{"@actions/core":"^3.0.1","@actions/exec":"^3.0.0","@actions/glob":"^0.7.0","@actions/http-client":"^4.0.1","@actions/io":"^3.0.2","@azure/core-rest-pipeline":"~1.23.0","@azure/storage-blob":"~12.31.0","@protobuf-ts/runtime-rpc":"^2.11.1","semver":"^7.8.5"},"devDependencies":{"@protobuf-ts/plugin":"^2.11.1","@types/node":"^25.9.8","@types/semver":"^7.8.0","typescript":"^5.9.3"},"overrides":{"uri-js":"npm:uri-js-replace@^1.0.1","node-fetch":"^3.3.2"}}');
+
+/***/ }),
+
+/***/ 9446:
+/***/ ((module) => {
+
+module.exports = /*#__PURE__*/JSON.parse('{"name":"@sigstore/tuf","version":"5.0.1","description":"Client for the Sigstore TUF repository","main":"dist/index.js","types":"dist/index.d.ts","scripts":{"clean":"shx rm -rf dist *.tsbuildinfo","build":"tsc --build","test":"jest"},"files":["dist","seeds.json"],"author":"bdehamer@github.com","license":"Apache-2.0","repository":{"type":"git","url":"git+https://github.com/sigstore/sigstore-js.git"},"bugs":{"url":"https://github.com/sigstore/sigstore-js/issues"},"homepage":"https://github.com/sigstore/sigstore-js/tree/main/packages/tuf#readme","publishConfig":{"provenance":true},"devDependencies":{"@sigstore/jest":"^0.0.0","@tufjs/repo-mock":"^5.0.2","@types/make-fetch-happen":"^10.0.4"},"dependencies":{"@sigstore/protobuf-specs":"^0.5.2","tuf-js":"^6.0.2"},"engines":{"node":"^22.22.2 || ^24.15.0 || >=26.0.0"}}');
+
+/***/ }),
+
+/***/ 8032:
+/***/ ((module) => {
+
+module.exports = /*#__PURE__*/JSON.parse('{"https://tuf-repo-cdn.sigstore.dev":{"root.json":"ewogInNpZ25hdHVyZXMiOiBbCiAgewogICAia2V5aWQiOiAiZTcxYTU0ZDU0MzgzNWJhODZhZGFkOTQ2MDM3OWM3NjQxZmI4NzI2ZDE2NGVhNzY2ODAxYTFjNTIyYWJhN2VhMiIsCiAgICJzaWciOiAiMzA0NTAyMjA2NWM2OGYyOGViZTQ0ZDBhNGUwNDdhNmUyODdmOTY2OWM4ZTNiMzFlMDg1MzYzOTZjNjdhMTQ4MzMyNmJlOGM2MDIyMTAwZTc1MjRhODg5ZTQwZGUwZGY4NDIzMWRkNDBlMWZjYzU3ZmJiYmY2MjA1NWMxNzA3NjU2ODMwN2RiYzUwOTA0NiIKICB9LAogIHsKICAgImtleWlkIjogIjIyZjRjYWVjNmQ4ZTZmOTU1NWFmNjZiM2Q0YzNjYjA2YTNiYjIzZmRjN2UzOWM5MTZjNjFmNDYyZTZmNTJiMDYiLAogICAic2lnIjogIjMwNDUwMjIwNmZlZGM0YTM4MmEwYzUxNTVlODEyYzliNzQ2MWZlMzg4ZWY3MDRmZWY5ZTA5M2M1YzIzNmUyMGFiYmY4ZTY2MjAyMjEwMDhiYmVjMzZiNjNiZjliYWViYzAzYTgzYzc3MGNmOTM4N2VmYzkwOTA3ZWI4MzA3MGI3YTg3NTEyOTUxMmQ2ODciCiAgfSwKICB7CiAgICJrZXlpZCI6ICI2MTY0MzgzODEyNWI0NDBiNDBkYjY5NDJmNWNiNWEzMWMwZGMwNDM2ODMxNmViMmFhYTU4Yjk1OTA0YTU4MjIyIiwKICAgInNpZyI6ICIzMDQ1MDIyMDQ2OGY0MjE5ZGI1MWM3ZTgxNWUxZTNkMzNkOTk4Nzg3OGFhMTJhZWFmMzMxNjA0ZDUxODBkZDYwYjE5ZGZiMzUwMjIxMDA5Zjc3OGVmNWU5NjY0N2MwOGJkMjNkNjNmNjljMGNjZTZmYzM1M2Q3NDdiOWQ1MWYzNWRjMGY4Njc4ZGU5ZmVmIgogIH0sCiAgewogICAia2V5aWQiOiAiYTY4N2U1YmY0ZmFiODJiMGVlNThkNDZlMDVjOTUzNTE0NWEyYzlhZmI0NThmNDNkNDJiNDVjYTBmZGNlMmE3MCIsCiAgICJzaWciOiAiMzA0NTAyMjAyOWUyNTE4YTdiY2FjMDVlYzBiMjI3ODA5Y2UwYzk2OTQwNjc0MzQxMmY5MGRjNTI1NTQwMWFmYjEzMzYzZjQ2MDIyMTAwODdhNjQxODIyNDllNDFkZDExZGU5MWM5ZjM4NWEzMzY1OWJkNjAxNDdhOTNkMTNjODZiN2E2NGU0NDdmOTgyNiIKICB9LAogIHsKICAgImtleWlkIjogIjE4M2U2NGYzNzY3MGRjMTNjYTBkMjg5OTVhMzA1M2YzNzQwOTU0ZGRjZTQ0MzIxYTQxZTQ2NTM0Y2Y0NGU2MzIiLAogICAic2lnIjogIjMwNDUwMjIxMDA4MDUxYzQ1NmVkMmJmNDhhYTVmYzU3NDI5MjhhYjA5MDQyNjZjMWQ2YmRkZTVmYzc1YWUyMGYxMmQwOThhOTU1MDIyMDNjYzY4M2JkODY3OTM4MDhlNmM5Zjg5ZTJjYTkzZjgwYjAwYzZlYTY0ODgwYWM0ZTM3ZGI2OWUyZTg2YjI0ZTMiCiAgfQogXSwKICJzaWduZWQiOiB7CiAgIl90eXBlIjogInJvb3QiLAogICJjb25zaXN0ZW50X3NuYXBzaG90IjogdHJ1ZSwKICAiZXhwaXJlcyI6ICIyMDI3LTA0LTIyVDE5OjI3OjMxWiIsCiAgImtleXMiOiB7CiAgICIwYzg3NDMyYzNiZjA5ZmQ5OTE4OWZkYzMyZmE1ZWFlZGY0ZTRhNWZhYzdiYWI3M2ZhMDRhMmUwZmM2NGFmNmY1IjogewogICAgImtleWlkX2hhc2hfYWxnb3JpdGhtcyI6IFsKICAgICAic2hhMjU2IiwKICAgICAic2hhNTEyIgogICAgXSwKICAgICJrZXl0eXBlIjogImVjZHNhIiwKICAgICJrZXl2YWwiOiB7CiAgICAgInB1YmxpYyI6ICItLS0tLUJFR0lOIFBVQkxJQyBLRVktLS0tLVxuTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFV1JpR3I1K2orM0o1U3NIK1p0cjVuRTJIMndPN1xuQlYrbk8zczkzZ0xjYTE4cVRPekhZMW9XeUFHRHlrTVNzR1RVQlN0OUQrQW4wS2ZLc0QybWZTTTQyUT09XG4tLS0tLUVORCBQVUJMSUMgS0VZLS0tLS1cbiIKICAgIH0sCiAgICAic2NoZW1lIjogImVjZHNhLXNoYTItbmlzdHAyNTYiLAogICAgIngtdHVmLW9uLWNpLW9ubGluZS11cmkiOiAiZ2Nwa21zOnByb2plY3RzL3NpZ3N0b3JlLXJvb3Qtc2lnbmluZy9sb2NhdGlvbnMvZ2xvYmFsL2tleVJpbmdzL3Jvb3QvY3J5cHRvS2V5cy90aW1lc3RhbXAvY3J5cHRvS2V5VmVyc2lvbnMvMSIKICAgfSwKICAgIjE4M2U2NGYzNzY3MGRjMTNjYTBkMjg5OTVhMzA1M2YzNzQwOTU0ZGRjZTQ0MzIxYTQxZTQ2NTM0Y2Y0NGU2MzIiOiB7CiAgICAia2V5dHlwZSI6ICJlY2RzYSIsCiAgICAia2V5dmFsIjogewogICAgICJwdWJsaWMiOiAiLS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS1cbk1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRU14cFBPSkNJWjVvdEc0MTA2ZkdKc2VFUWkzVjlcbnBrTVlRNHV5VjlUajFNN1dIWEl5TEcramtmdnVHMGdsUTFKWmJSWlpCVjNnQVI0c29qZEdISVNlb3c9PVxuLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tXG4iCiAgICB9LAogICAgInNjaGVtZSI6ICJlY2RzYS1zaGEyLW5pc3RwMjU2IiwKICAgICJ4LXR1Zi1vbi1jaS1rZXlvd25lciI6ICJAbGFuY2UiCiAgIH0sCiAgICIyMmY0Y2FlYzZkOGU2Zjk1NTVhZjY2YjNkNGMzY2IwNmEzYmIyM2ZkYzdlMzljOTE2YzYxZjQ2MmU2ZjUyYjA2IjogewogICAgImtleWlkX2hhc2hfYWxnb3JpdGhtcyI6IFsKICAgICAic2hhMjU2IiwKICAgICAic2hhNTEyIgogICAgXSwKICAgICJrZXl0eXBlIjogImVjZHNhIiwKICAgICJrZXl2YWwiOiB7CiAgICAgInB1YmxpYyI6ICItLS0tLUJFR0lOIFBVQkxJQyBLRVktLS0tLVxuTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFekJ6Vk9tSENQb2pNVkxTSTM2NFdpaVY4TlByRFxuNklnUnhWbGlza3ovdit5M0pFUjVtY1ZHY09ObGlEY1dNQzVKMmxmSG1qUE5QaGI0SDd4bThMemZTQT09XG4tLS0tLUVORCBQVUJMSUMgS0VZLS0tLS1cbiIKICAgIH0sCiAgICAic2NoZW1lIjogImVjZHNhLXNoYTItbmlzdHAyNTYiLAogICAgIngtdHVmLW9uLWNpLWtleW93bmVyIjogIkBzYW50aWFnb3RvcnJlcyIKICAgfSwKICAgIjYxNjQzODM4MTI1YjQ0MGI0MGRiNjk0MmY1Y2I1YTMxYzBkYzA0MzY4MzE2ZWIyYWFhNThiOTU5MDRhNTgyMjIiOiB7CiAgICAia2V5aWRfaGFzaF9hbGdvcml0aG1zIjogWwogICAgICJzaGEyNTYiLAogICAgICJzaGE1MTIiCiAgICBdLAogICAgImtleXR5cGUiOiAiZWNkc2EiLAogICAgImtleXZhbCI6IHsKICAgICAicHVibGljIjogIi0tLS0tQkVHSU4gUFVCTElDIEtFWS0tLS0tXG5NRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUVpbmlrU3NBUW1Za05lSDVlWXEvQ25JekxhYWNPXG54bFNhYXdRRE93cUt5L3RDcXhxNXh4UFNKYzIxSzRXSWhzOUd5T2tLZnp1ZVkzR0lMemNNSlo0Y1d3PT1cbi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLVxuIgogICAgfSwKICAgICJzY2hlbWUiOiAiZWNkc2Etc2hhMi1uaXN0cDI1NiIsCiAgICAieC10dWYtb24tY2kta2V5b3duZXIiOiAiQGJvYmNhbGxhd2F5IgogICB9LAogICAiYTY4N2U1YmY0ZmFiODJiMGVlNThkNDZlMDVjOTUzNTE0NWEyYzlhZmI0NThmNDNkNDJiNDVjYTBmZGNlMmE3MCI6IHsKICAgICJrZXlpZF9oYXNoX2FsZ29yaXRobXMiOiBbCiAgICAgInNoYTI1NiIsCiAgICAgInNoYTUxMiIKICAgIF0sCiAgICAia2V5dHlwZSI6ICJlY2RzYSIsCiAgICAia2V5dmFsIjogewogICAgICJwdWJsaWMiOiAiLS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS1cbk1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTBnaHJoOTJMdzFZcjNpZEdWNVdxQ3RNREI4Q3hcbitEOGhkQzR3MlpMTklwbFZSb1ZHTHNrWWEzZ2hlTXlPamlKOGtQaTE1YVEyLy83UCtvajdVdkpQR3c9PVxuLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tXG4iCiAgICB9LAogICAgInNjaGVtZSI6ICJlY2RzYS1zaGEyLW5pc3RwMjU2IiwKICAgICJ4LXR1Zi1vbi1jaS1rZXlvd25lciI6ICJAam9zaHVhZ2wiCiAgIH0sCiAgICJlNzFhNTRkNTQzODM1YmE4NmFkYWQ5NDYwMzc5Yzc2NDFmYjg3MjZkMTY0ZWE3NjY4MDFhMWM1MjJhYmE3ZWEyIjogewogICAgImtleWlkX2hhc2hfYWxnb3JpdGhtcyI6IFsKICAgICAic2hhMjU2IiwKICAgICAic2hhNTEyIgogICAgXSwKICAgICJrZXl0eXBlIjogImVjZHNhIiwKICAgICJrZXl2YWwiOiB7CiAgICAgInB1YmxpYyI6ICItLS0tLUJFR0lOIFBVQkxJQyBLRVktLS0tLVxuTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJemowREFRY0RRZ0FFRVhzejNTWlhGYjhqTVY0Mmo2cEpseWpialI4S1xuTjNCd29jZXhxNkxNSWI1cXNXS09RdkxOMTZOVWVmTGM0SHN3T291bVJzVlZhYWpTcFFTNmZvYmtSdz09XG4tLS0tLUVORCBQVUJMSUMgS0VZLS0tLS1cbiIKICAgIH0sCiAgICAic2NoZW1lIjogImVjZHNhLXNoYTItbmlzdHAyNTYiLAogICAgIngtdHVmLW9uLWNpLWtleW93bmVyIjogIkBtbm02NzgiCiAgIH0KICB9LAogICJyb2xlcyI6IHsKICAgInJvb3QiOiB7CiAgICAia2V5aWRzIjogWwogICAgICJlNzFhNTRkNTQzODM1YmE4NmFkYWQ5NDYwMzc5Yzc2NDFmYjg3MjZkMTY0ZWE3NjY4MDFhMWM1MjJhYmE3ZWEyIiwKICAgICAiMjJmNGNhZWM2ZDhlNmY5NTU1YWY2NmIzZDRjM2NiMDZhM2JiMjNmZGM3ZTM5YzkxNmM2MWY0NjJlNmY1MmIwNiIsCiAgICAgIjYxNjQzODM4MTI1YjQ0MGI0MGRiNjk0MmY1Y2I1YTMxYzBkYzA0MzY4MzE2ZWIyYWFhNThiOTU5MDRhNTgyMjIiLAogICAgICJhNjg3ZTViZjRmYWI4MmIwZWU1OGQ0NmUwNWM5NTM1MTQ1YTJjOWFmYjQ1OGY0M2Q0MmI0NWNhMGZkY2UyYTcwIiwKICAgICAiMTgzZTY0ZjM3NjcwZGMxM2NhMGQyODk5NWEzMDUzZjM3NDA5NTRkZGNlNDQzMjFhNDFlNDY1MzRjZjQ0ZTYzMiIKICAgIF0sCiAgICAidGhyZXNob2xkIjogMwogICB9LAogICAic25hcHNob3QiOiB7CiAgICAia2V5aWRzIjogWwogICAgICIwYzg3NDMyYzNiZjA5ZmQ5OTE4OWZkYzMyZmE1ZWFlZGY0ZTRhNWZhYzdiYWI3M2ZhMDRhMmUwZmM2NGFmNmY1IgogICAgXSwKICAgICJ0aHJlc2hvbGQiOiAxLAogICAgIngtdHVmLW9uLWNpLWV4cGlyeS1wZXJpb2QiOiAzNjUwLAogICAgIngtdHVmLW9uLWNpLXNpZ25pbmctcGVyaW9kIjogMzY1CiAgIH0sCiAgICJ0YXJnZXRzIjogewogICAgImtleWlkcyI6IFsKICAgICAiZTcxYTU0ZDU0MzgzNWJhODZhZGFkOTQ2MDM3OWM3NjQxZmI4NzI2ZDE2NGVhNzY2ODAxYTFjNTIyYWJhN2VhMiIsCiAgICAgIjIyZjRjYWVjNmQ4ZTZmOTU1NWFmNjZiM2Q0YzNjYjA2YTNiYjIzZmRjN2UzOWM5MTZjNjFmNDYyZTZmNTJiMDYiLAogICAgICI2MTY0MzgzODEyNWI0NDBiNDBkYjY5NDJmNWNiNWEzMWMwZGMwNDM2ODMxNmViMmFhYTU4Yjk1OTA0YTU4MjIyIiwKICAgICAiYTY4N2U1YmY0ZmFiODJiMGVlNThkNDZlMDVjOTUzNTE0NWEyYzlhZmI0NThmNDNkNDJiNDVjYTBmZGNlMmE3MCIsCiAgICAgIjE4M2U2NGYzNzY3MGRjMTNjYTBkMjg5OTVhMzA1M2YzNzQwOTU0ZGRjZTQ0MzIxYTQxZTQ2NTM0Y2Y0NGU2MzIiCiAgICBdLAogICAgInRocmVzaG9sZCI6IDMKICAgfSwKICAgInRpbWVzdGFtcCI6IHsKICAgICJrZXlpZHMiOiBbCiAgICAgIjBjODc0MzJjM2JmMDlmZDk5MTg5ZmRjMzJmYTVlYWVkZjRlNGE1ZmFjN2JhYjczZmEwNGEyZTBmYzY0YWY2ZjUiCiAgICBdLAogICAgInRocmVzaG9sZCI6IDEsCiAgICAieC10dWYtb24tY2ktZXhwaXJ5LXBlcmlvZCI6IDcsCiAgICAieC10dWYtb24tY2ktc2lnbmluZy1wZXJpb2QiOiA2CiAgIH0KICB9LAogICJzcGVjX3ZlcnNpb24iOiAiMS4wIiwKICAidmVyc2lvbiI6IDE2LAogICJ4LXR1Zi1vbi1jaS1leHBpcnktcGVyaW9kIjogMTk3LAogICJ4LXR1Zi1vbi1jaS1zaWduaW5nLXBlcmlvZCI6IDQ2CiB9Cn0=","targets":{"trusted_root.json":"ewogICJtZWRpYVR5cGUiOiAiYXBwbGljYXRpb24vdm5kLmRldi5zaWdzdG9yZS50cnVzdGVkcm9vdCtqc29uO3ZlcnNpb249MC4xIiwKICAidGxvZ3MiOiBbCiAgICB7CiAgICAgICJiYXNlVXJsIjogImh0dHBzOi8vcmVrb3Iuc2lnc3RvcmUuZGV2IiwKICAgICAgImhhc2hBbGdvcml0aG0iOiAiU0hBMl8yNTYiLAogICAgICAicHVibGljS2V5IjogewogICAgICAgICJyYXdCeXRlcyI6ICJNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUUyRzJZKzJ0YWJkVFY1QmNHaUJJeDBhOWZBRndya0JibUxTR3RrczRMM3FYNnlZWTB6dWZCbmhDOFVyL2l5NTVHaFdQLzlBL2JZMkxoQzMwTTkrUll0dz09IiwKICAgICAgICAia2V5RGV0YWlscyI6ICJQS0lYX0VDRFNBX1AyNTZfU0hBXzI1NiIsCiAgICAgICAgInZhbGlkRm9yIjogewogICAgICAgICAgInN0YXJ0IjogIjIwMjEtMDEtMTJUMTE6NTM6MjdaIgogICAgICAgIH0KICAgICAgfSwKICAgICAgImxvZ0lkIjogewogICAgICAgICJrZXlJZCI6ICJ3Tkk5YXRRR2x6K1ZXZk82TFJ5Z0g0UVVmWS84VzRSRndpVDVpNVdSZ0IwPSIKICAgICAgfQogICAgfSwKICAgIHsKICAgICAgImJhc2VVcmwiOiAiaHR0cHM6Ly9sb2cyMDI1LTEucmVrb3Iuc2lnc3RvcmUuZGV2IiwKICAgICAgImhhc2hBbGdvcml0aG0iOiAiU0hBMl8yNTYiLAogICAgICAicHVibGljS2V5IjogewogICAgICAgICJyYXdCeXRlcyI6ICJNQ293QlFZREsyVndBeUVBdDhybHAxa25Hd2pmYmNYQVlQWUFrbjBYaUx6MXg4TzR0MFlrRWhpZTI0ND0iLAogICAgICAgICJrZXlEZXRhaWxzIjogIlBLSVhfRUQyNTUxOSIsCiAgICAgICAgInZhbGlkRm9yIjogewogICAgICAgICAgInN0YXJ0IjogIjIwMjUtMDktMjNUMDA6MDA6MDBaIgogICAgICAgIH0KICAgICAgfSwKICAgICAgImxvZ0lkIjogewogICAgICAgICJrZXlJZCI6ICJ6eEdaRlZ2ZDBGRW1qUjhXckZ3TWRjQUo5dnRhWS9RWGY0NFkxd1VlUDZBPSIKICAgICAgfQogICAgfQogIF0sCiAgImNlcnRpZmljYXRlQXV0aG9yaXRpZXMiOiBbCiAgICB7CiAgICAgICJzdWJqZWN0IjogewogICAgICAgICJvcmdhbml6YXRpb24iOiAic2lnc3RvcmUuZGV2IiwKICAgICAgICAiY29tbW9uTmFtZSI6ICJzaWdzdG9yZSIKICAgICAgfSwKICAgICAgInVyaSI6ICJodHRwczovL2Z1bGNpby5zaWdzdG9yZS5kZXYiLAogICAgICAiY2VydENoYWluIjogewogICAgICAgICJjZXJ0aWZpY2F0ZXMiOiBbCiAgICAgICAgICB7CiAgICAgICAgICAgICJyYXdCeXRlcyI6ICJNSUlCK0RDQ0FYNmdBd0lCQWdJVE5Wa0Rab0Npb2ZQRHN5N2RmbTZnZUxidWh6QUtCZ2dxaGtqT1BRUURBekFxTVJVd0V3WURWUVFLRXd4emFXZHpkRzl5WlM1a1pYWXhFVEFQQmdOVkJBTVRDSE5wWjNOMGIzSmxNQjRYRFRJeE1ETXdOekF6TWpBeU9Wb1hEVE14TURJeU16QXpNakF5T1Zvd0tqRVZNQk1HQTFVRUNoTU1jMmxuYzNSdmNtVXVaR1YyTVJFd0R3WURWUVFERXdoemFXZHpkRzl5WlRCMk1CQUdCeXFHU000OUFnRUdCU3VCQkFBaUEySUFCTFN5QTdJaTVrK3BOTzhaRVdZMHlsZW1XRG93T2tOYTNrTCtHWkU1WjVHV2VoTDkvQTliUk5BM1JicnNaNWkwSmNhc3RhUkw3U3A1ZnAvakQ1ZHhxYy9VZFRWbmx2UzE2YW4rMllmc3dlL1F1TG9sUlVDcmNPRTIrMmlBNSt0emQ2Tm1NR1F3RGdZRFZSMFBBUUgvQkFRREFnRUdNQklHQTFVZEV3RUIvd1FJTUFZQkFmOENBUUV3SFFZRFZSME9CQllFRk1qRkhRQkJtaVFwTWxFazZ3MnVTdTFLQnRQc01COEdBMVVkSXdRWU1CYUFGTWpGSFFCQm1pUXBNbEVrNncydVN1MUtCdFBzTUFvR0NDcUdTTTQ5QkFNREEyZ0FNR1VDTUg4bGlXSmZNdWk2dlhYQmhqRGdZNE13c2xtTi9USnhWZS84M1dyRm9td21OZjA1NnkxWDQ4RjljNG0zYTNvelhBSXhBS2pSYXk1L2FqL2pzS0tHSWttUWF0akk4dXVwSHIvK0N4RnZhSldtcFlxTmtMREdSVSs5b3J6aDVoSTJScmN1YVE9PSIKICAgICAgICAgIH0KICAgICAgICBdCiAgICAgIH0sCiAgICAgICJ2YWxpZEZvciI6IHsKICAgICAgICAic3RhcnQiOiAiMjAyMS0wMy0wN1QwMzoyMDoyOVoiLAogICAgICAgICJlbmQiOiAiMjAyMi0xMi0zMVQyMzo1OTo1OS45OTlaIgogICAgICB9CiAgICB9LAogICAgewogICAgICAic3ViamVjdCI6IHsKICAgICAgICAib3JnYW5pemF0aW9uIjogInNpZ3N0b3JlLmRldiIsCiAgICAgICAgImNvbW1vbk5hbWUiOiAic2lnc3RvcmUiCiAgICAgIH0sCiAgICAgICJ1cmkiOiAiaHR0cHM6Ly9mdWxjaW8uc2lnc3RvcmUuZGV2IiwKICAgICAgImNlcnRDaGFpbiI6IHsKICAgICAgICAiY2VydGlmaWNhdGVzIjogWwogICAgICAgICAgewogICAgICAgICAgICAicmF3Qnl0ZXMiOiAiTUlJQ0dqQ0NBYUdnQXdJQkFnSVVBTG5WaVZmblUwYnJKYXNtUmtIcm4vVW5mYVF3Q2dZSUtvWkl6ajBFQXdNd0tqRVZNQk1HQTFVRUNoTU1jMmxuYzNSdmNtVXVaR1YyTVJFd0R3WURWUVFERXdoemFXZHpkRzl5WlRBZUZ3MHlNakEwTVRNeU1EQTJNVFZhRncwek1URXdNRFV4TXpVMk5UaGFNRGN4RlRBVEJnTlZCQW9UREhOcFozTjBiM0psTG1SbGRqRWVNQndHQTFVRUF4TVZjMmxuYzNSdmNtVXRhVzUwWlhKdFpXUnBZWFJsTUhZd0VBWUhLb1pJemowQ0FRWUZLNEVFQUNJRFlnQUU4UlZTL3lzSCtOT3Z1RFp5UEladGlsZ1VGOU5sYXJZcEFkOUhQMXZCQkgxVTVDVjc3TFNTN3MwWmlING5FN0h2N3B0UzZMdnZSL1NUazc5OExWZ016TGxKNEhlSWZGM3RIU2FleExjWXBTQVNyMWtTME4vUmdCSnovOWpXQ2lYbm8zc3dlVEFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFd1lEVlIwbEJBd3dDZ1lJS3dZQkJRVUhBd013RWdZRFZSMFRBUUgvQkFnd0JnRUIvd0lCQURBZEJnTlZIUTRFRmdRVTM5UHB6MVlrRVpiNXFOanBLRldpeGk0WVpEOHdId1lEVlIwakJCZ3dGb0FVV01BZVg1RkZwV2FwZXN5UW9aTWkwQ3JGeGZvd0NnWUlLb1pJemowRUF3TURad0F3WkFJd1BDc1FLNERZaVpZRFBJYURpNUhGS25meFh4NkFTU1ZtRVJmc3luWUJpWDJYNlNKUm5aVTg0LzlEWmRuRnZ2eG1BakJPdDZRcEJsYzRKLzBEeHZrVENxcGNsdnppTDZCQ0NQbmpkbElCM1B1M0J4c1BteWdVWTdJaTJ6YmRDZGxpaW93PSIKICAgICAgICAgIH0sCiAgICAgICAgICB7CiAgICAgICAgICAgICJyYXdCeXRlcyI6ICJNSUlCOXpDQ0FYeWdBd0lCQWdJVUFMWk5BUEZkeEhQd2plRGxvRHd5WUNoQU8vNHdDZ1lJS29aSXpqMEVBd013S2pFVk1CTUdBMVVFQ2hNTWMybG5jM1J2Y21VdVpHVjJNUkV3RHdZRFZRUURFd2h6YVdkemRHOXlaVEFlRncweU1URXdNRGN4TXpVMk5UbGFGdzB6TVRFd01EVXhNelUyTlRoYU1Db3hGVEFUQmdOVkJBb1RESE5wWjNOMGIzSmxMbVJsZGpFUk1BOEdBMVVFQXhNSWMybG5jM1J2Y21Vd2RqQVFCZ2NxaGtqT1BRSUJCZ1VyZ1FRQUlnTmlBQVQ3WGVGVDRyYjNQUUd3UzRJYWp0TGszL09sbnBnYW5nYUJjbFlwc1lCcjVpKzR5bkIwN2NlYjNMUDBPSU9aZHhleFg2OWM1aVZ1eUpSUStIejA1eWkrVUYzdUJXQWxIcGlTNXNoMCtIMkdIRTdTWHJrMUVDNW0xVHIxOUw5Z2c5MmpZekJoTUE0R0ExVWREd0VCL3dRRUF3SUJCakFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQjBHQTFVZERnUVdCQlJZd0I1ZmtVV2xacWw2ekpDaGt5TFFLc1hGK2pBZkJnTlZIU01FR0RBV2dCUll3QjVma1VXbFpxbDZ6SkNoa3lMUUtzWEYrakFLQmdncWhrak9QUVFEQXdOcEFEQm1BakVBajFuSGVYWnArMTNOV0JOYStFRHNEUDhHMVdXZzF0Q01XUC9XSFBxcGFWbzBqaHN3ZU5GWmdTczBlRTd3WUk0cUFqRUEyV0I5b3Q5OHNJa29GM3ZaWWRkMy9WdFdCNWI5VE5NZWE3SXgvc3RKNVRmY0xMZUFCTEU0Qk5KT3NRNHZuQkhKIgogICAgICAgICAgfQogICAgICAgIF0KICAgICAgfSwKICAgICAgInZhbGlkRm9yIjogewogICAgICAgICJzdGFydCI6ICIyMDIyLTA0LTEzVDIwOjA2OjE1WiIKICAgICAgfQogICAgfQogIF0sCiAgImN0bG9ncyI6IFsKICAgIHsKICAgICAgImJhc2VVcmwiOiAiaHR0cHM6Ly9jdGZlLnNpZ3N0b3JlLmRldi90ZXN0IiwKICAgICAgImhhc2hBbGdvcml0aG0iOiAiU0hBMl8yNTYiLAogICAgICAicHVibGljS2V5IjogewogICAgICAgICJyYXdCeXRlcyI6ICJNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUViZndSK1JKdWRYc2NnUkJScEtYMVhGRHkzUHl1ZER4ei9TZm5SaTFmVDhla3BmQmQyTzF1b3o3anIzWjhuS3p4QTY5RVVRK2VGQ0ZJM3pldWJQV1U3dz09IiwKICAgICAgICAia2V5RGV0YWlscyI6ICJQS0lYX0VDRFNBX1AyNTZfU0hBXzI1NiIsCiAgICAgICAgInZhbGlkRm9yIjogewogICAgICAgICAgInN0YXJ0IjogIjIwMjEtMDMtMTRUMDA6MDA6MDBaIiwKICAgICAgICAgICJlbmQiOiAiMjAyMi0xMC0zMVQyMzo1OTo1OS45OTlaIgogICAgICAgIH0KICAgICAgfSwKICAgICAgImxvZ0lkIjogewogICAgICAgICJrZXlJZCI6ICJDR0NTOENoUy8yaEYwZEZySjRTY1JXY1lyQlk5d3pqU2JlYThJZ1kyYjNJPSIKICAgICAgfQogICAgfSwKICAgIHsKICAgICAgImJhc2VVcmwiOiAiaHR0cHM6Ly9jdGZlLnNpZ3N0b3JlLmRldi8yMDIyIiwKICAgICAgImhhc2hBbGdvcml0aG0iOiAiU0hBMl8yNTYiLAogICAgICAicHVibGljS2V5IjogewogICAgICAgICJyYXdCeXRlcyI6ICJNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUVpUFNsRmkwQ21GVGZFakNVcUY5SHVDRWNZWE5LQWFZYWxJSm1CWjh5eWV6UGpUcWh4cktCcE1uYW9jVnRMSkJJMWVNM3VYblF6UUdBSmRKNGdzOUZ5dz09IiwKICAgICAgICAia2V5RGV0YWlscyI6ICJQS0lYX0VDRFNBX1AyNTZfU0hBXzI1NiIsCiAgICAgICAgInZhbGlkRm9yIjogewogICAgICAgICAgInN0YXJ0IjogIjIwMjItMTAtMjBUMDA6MDA6MDBaIgogICAgICAgIH0KICAgICAgfSwKICAgICAgImxvZ0lkIjogewogICAgICAgICJrZXlJZCI6ICIzVDB3YXNiSEVUSmpHUjRjbVdjM0FxSktYcmplUEszL2g0cHlnQzhwN280PSIKICAgICAgfQogICAgfQogIF0sCiAgInRpbWVzdGFtcEF1dGhvcml0aWVzIjogWwogICAgewogICAgICAic3ViamVjdCI6IHsKICAgICAgICAib3JnYW5pemF0aW9uIjogInNpZ3N0b3JlLmRldiIsCiAgICAgICAgImNvbW1vbk5hbWUiOiAic2lnc3RvcmUtdHNhLXNlbGZzaWduZWQiCiAgICAgIH0sCiAgICAgICJ1cmkiOiAiaHR0cHM6Ly90aW1lc3RhbXAuc2lnc3RvcmUuZGV2L2FwaS92MS90aW1lc3RhbXAiLAogICAgICAiY2VydENoYWluIjogewogICAgICAgICJjZXJ0aWZpY2F0ZXMiOiBbCiAgICAgICAgICB7CiAgICAgICAgICAgICJyYXdCeXRlcyI6ICJNSUlDRURDQ0FaYWdBd0lCQWdJVU9oTlVMd3lRWWU2OHdVTXZ5NHFPaXlvaml3d3dDZ1lJS29aSXpqMEVBd013T1RFVk1CTUdBMVVFQ2hNTWMybG5jM1J2Y21VdVpHVjJNU0F3SGdZRFZRUURFeGR6YVdkemRHOXlaUzEwYzJFdGMyVnNabk5wWjI1bFpEQWVGdzB5TlRBME1EZ3dOalU1TkROYUZ3MHpOVEEwTURZd05qVTVORE5hTUM0eEZUQVRCZ05WQkFvVERITnBaM04wYjNKbExtUmxkakVWTUJNR0ExVUVBeE1NYzJsbmMzUnZjbVV0ZEhOaE1IWXdFQVlIS29aSXpqMENBUVlGSzRFRUFDSURZZ0FFNHJhMlo4aEtOaWcyVDlrRmpDQVRvR0czMGpreStXUXYzQnpMK21LdmgxU0tOUi9Vd3V3c2ZOQ2c0c3J5b1lBZDhFNmlzb3ZWQTNNNGFvTmRtOVFEaTUwWjhuVEV5dnFnZkRQdFRJd1hJdGZpVy9BRmYxVjd1d2tia0FvajB4eGNvMm93YURBT0JnTlZIUThCQWY4RUJBTUNCNEF3SFFZRFZSME9CQllFRkluOWVVT0h6OUJsUnNNQ1JzY3NjMXQ5dE9zRE1COEdBMVVkSXdRWU1CYUFGSmpzQWU5L3UxSC8xSlVlYjRxSW1GTUhpYzYvTUJZR0ExVWRKUUVCL3dRTU1Bb0dDQ3NHQVFVRkJ3TUlNQW9HQ0NxR1NNNDlCQU1EQTJnQU1HVUNNRHRwc1YvNkthTzBxeUYvVU1zWDJhU1VYS1FGZG9HVHB0UUdjMGZ0cTFjc3VsSFBHRzZkc215TU5kM0pCK0czRVFJeEFPYWp2QmNqcEptS2I0TnYrMlRhb2o4VWM1K2I2aWg2RlhDQ0tyYVNxdXBlMDd6cXN3TWNYSlRlMWNFeHZIdnZsdz09IgogICAgICAgICAgfSwKICAgICAgICAgIHsKICAgICAgICAgICAgInJhd0J5dGVzIjogIk1JSUI5ekNDQVh5Z0F3SUJBZ0lVVjdmMEdMRE9vRXpJaDhMWFNXODBPSmlVcDE0d0NnWUlLb1pJemowRUF3TXdPVEVWTUJNR0ExVUVDaE1NYzJsbmMzUnZjbVV1WkdWMk1TQXdIZ1lEVlFRREV4ZHphV2R6ZEc5eVpTMTBjMkV0YzJWc1puTnBaMjVsWkRBZUZ3MHlOVEEwTURnd05qVTVORE5hRncwek5UQTBNRFl3TmpVNU5ETmFNRGt4RlRBVEJnTlZCQW9UREhOcFozTjBiM0psTG1SbGRqRWdNQjRHQTFVRUF4TVhjMmxuYzNSdmNtVXRkSE5oTFhObGJHWnphV2R1WldRd2RqQVFCZ2NxaGtqT1BRSUJCZ1VyZ1FRQUlnTmlBQVFVUU50ZlJUL291M1lBVGE2d0Iva0tUZTcwY2ZKd3lSSUJvdk1udDhSY0pwaC9DT0U4MnV5UzZGbXBwTExMMVZCUEdjUGZwUVBZSk5Yeld3aThpY3doS1E2Vy9RZTJoM29lYkJiMkZIcHdOSkRxbytUTWFDL3RkZmt2L0VsSkI3MmpSVEJETUE0R0ExVWREd0VCL3dRRUF3SUJCakFTQmdOVkhSTUJBZjhFQ0RBR0FRSC9BZ0VBTUIwR0ExVWREZ1FXQkJTWTdBSHZmN3RSLzlTVkhtK0tpSmhUQjRuT3Z6QUtCZ2dxaGtqT1BRUURBd05wQURCbUFqRUF3R0VHcmZHWlIxY2VuMVI4L0RUVk1JOTQzTHNzWm1KUnREcC9pN1NmR0htR1JQNmdSYnVqOXZPSzNiNjdaMFFRQWpFQXVUMkg2NzNMUUVhSFRjeVFTWnJrcDRtWDdXd2ttRitzVmJrWVk1bVhOK1JNSDEzS1VFSEhPcUFTYWVtWVdLL0UiCiAgICAgICAgICB9CiAgICAgICAgXQogICAgICB9LAogICAgICAidmFsaWRGb3IiOiB7CiAgICAgICAgInN0YXJ0IjogIjIwMjUtMDctMDRUMDA6MDA6MDBaIgogICAgICB9CiAgICB9CiAgXQp9Cg==","registry.npmjs.org%2Fkeys.json":"ewogICAgImtleXMiOiBbCiAgICAgICAgewogICAgICAgICAgICAia2V5SWQiOiAiU0hBMjU2OmpsM2J3c3d1ODBQampva0NnaDBvMnc1YzJVNExoUUFFNTdnajljejFrekEiLAogICAgICAgICAgICAia2V5VXNhZ2UiOiAibnBtOnNpZ25hdHVyZXMiLAogICAgICAgICAgICAicHVibGljS2V5IjogewogICAgICAgICAgICAgICAgInJhd0J5dGVzIjogIk1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRTFPbGIzek1BRkZ4WEtIaUlrUU81Y0ozWWhsNWk2VVBwK0lodXRlQkpidUhjQTVVb2dLbzBFV3RsV3dXNktTYUtvVE5FWUw3SmxDUWlWbmtoQmt0VWdnPT0iLAogICAgICAgICAgICAgICAgImtleURldGFpbHMiOiAiUEtJWF9FQ0RTQV9QMjU2X1NIQV8yNTYiLAogICAgICAgICAgICAgICAgInZhbGlkRm9yIjogewogICAgICAgICAgICAgICAgICAgICJzdGFydCI6ICIxOTk5LTAxLTAxVDAwOjAwOjAwLjAwMFoiLAogICAgICAgICAgICAgICAgICAgICJlbmQiOiAiMjAyNS0wMS0yOVQwMDowMDowMC4wMDBaIgogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICB7CiAgICAgICAgICAgICJrZXlJZCI6ICJTSEEyNTY6amwzYndzd3U4MFBqam9rQ2doMG8ydzVjMlU0TGhRQUU1N2dqOWN6MWt6QSIsCiAgICAgICAgICAgICJrZXlVc2FnZSI6ICJucG06YXR0ZXN0YXRpb25zIiwKICAgICAgICAgICAgInB1YmxpY0tleSI6IHsKICAgICAgICAgICAgICAgICJyYXdCeXRlcyI6ICJNRmt3RXdZSEtvWkl6ajBDQVFZSUtvWkl6ajBEQVFjRFFnQUUxT2xiM3pNQUZGeFhLSGlJa1FPNWNKM1lobDVpNlVQcCtJaHV0ZUJKYnVIY0E1VW9nS28wRVd0bFd3VzZLU2FLb1RORVlMN0psQ1FpVm5raEJrdFVnZz09IiwKICAgICAgICAgICAgICAgICJrZXlEZXRhaWxzIjogIlBLSVhfRUNEU0FfUDI1Nl9TSEFfMjU2IiwKICAgICAgICAgICAgICAgICJ2YWxpZEZvciI6IHsKICAgICAgICAgICAgICAgICAgICAic3RhcnQiOiAiMjAyMi0xMi0wMVQwMDowMDowMC4wMDBaIiwKICAgICAgICAgICAgICAgICAgICAiZW5kIjogIjIwMjUtMDEtMjlUMDA6MDA6MDAuMDAwWiIKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgICAia2V5SWQiOiAiU0hBMjU2OkRoUTh3UjVBUEJ2RkhMRi8rVGMrQVl2UE9kVHBjSURxT2h4c0JIUndDN1UiLAogICAgICAgICAgICAia2V5VXNhZ2UiOiAibnBtOnNpZ25hdHVyZXMiLAogICAgICAgICAgICAicHVibGljS2V5IjogewogICAgICAgICAgICAgICAgInJhd0J5dGVzIjogIk1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRVk2WWE3VysrN2FVUHp2TVRyZXpINlljeDNjK0hPS1lDY05HeWJKWlNDSnEvZmQ3UWE4dXVBS3RkSWtVUXRRaUVLRVJoQW1FNWxNTUpoUDhPa0RPYTJnPT0iLAogICAgICAgICAgICAgICAgImtleURldGFpbHMiOiAiUEtJWF9FQ0RTQV9QMjU2X1NIQV8yNTYiLAogICAgICAgICAgICAgICAgInZhbGlkRm9yIjogewogICAgICAgICAgICAgICAgICAgICJzdGFydCI6ICIyMDI1LTAxLTEzVDAwOjAwOjAwLjAwMFoiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICB9LAogICAgICAgIHsKICAgICAgICAgICAgImtleUlkIjogIlNIQTI1NjpEaFE4d1I1QVBCdkZITEYvK1RjK0FZdlBPZFRwY0lEcU9oeHNCSFJ3QzdVIiwKICAgICAgICAgICAgImtleVVzYWdlIjogIm5wbTphdHRlc3RhdGlvbnMiLAogICAgICAgICAgICAicHVibGljS2V5IjogewogICAgICAgICAgICAgICAgInJhd0J5dGVzIjogIk1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRVk2WWE3VysrN2FVUHp2TVRyZXpINlljeDNjK0hPS1lDY05HeWJKWlNDSnEvZmQ3UWE4dXVBS3RkSWtVUXRRaUVLRVJoQW1FNWxNTUpoUDhPa0RPYTJnPT0iLAogICAgICAgICAgICAgICAgImtleURldGFpbHMiOiAiUEtJWF9FQ0RTQV9QMjU2X1NIQV8yNTYiLAogICAgICAgICAgICAgICAgInZhbGlkRm9yIjogewogICAgICAgICAgICAgICAgICAgICJzdGFydCI6ICIyMDI1LTAxLTEzVDAwOjAwOjAwLjAwMFoiCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICBdCn0K"}}}');
+
+/***/ }),
+
+/***/ 7523:
+/***/ ((module) => {
+
+module.exports = /*#__PURE__*/JSON.parse('{"name":"tuf-js","version":"6.0.2","description":"JavaScript implementation of The Update Framework (TUF)","main":"dist/index.js","types":"dist/index.d.ts","scripts":{"build":"tsc --build tsconfig.build.json","clean":"rm -rf dist && rm tsconfig.build.tsbuildinfo","test":"jest"},"repository":{"type":"git","url":"git+https://github.com/theupdateframework/tuf-js.git"},"files":["dist"],"keywords":["tuf","security","update"],"author":"bdehamer@github.com","license":"MIT","bugs":{"url":"https://github.com/theupdateframework/tuf-js/issues"},"homepage":"https://github.com/theupdateframework/tuf-js/tree/main/packages/client#readme","devDependencies":{"@tufjs/repo-mock":"5.0.2","@types/debug":"^4.1.13","@types/retry":"^0.12.5"},"dependencies":{"@gar/promise-retry":"^1.0.3","@tufjs/models":"5.0.2","debug":"^4.4.3"},"engines":{"node":"^22.22.2 || ^24.15.0 || >=26.0.0"}}');
 
 /***/ })
 
@@ -43145,8 +55444,8 @@ function escapeProperty(s) {
         .replace(/,/g, '%2C');
 }
 //# sourceMappingURL=command.js.map
-;// CONCATENATED MODULE: external "crypto"
-const external_crypto_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("crypto");
+// EXTERNAL MODULE: external "crypto"
+var external_crypto_ = __nccwpck_require__(6982);
 // EXTERNAL MODULE: external "fs"
 var external_fs_ = __nccwpck_require__(9896);
 ;// CONCATENATED MODULE: ./node_modules/@actions/core/lib/file-command.js
@@ -43170,7 +55469,7 @@ function issueFileCommand(command, message) {
     });
 }
 function prepareKeyValueMessage(key, value) {
-    const delimiter = `ghadelimiter_${external_crypto_namespaceObject.randomUUID()}`;
+    const delimiter = `ghadelimiter_${external_crypto_.randomUUID()}`;
     const convertedValue = toCommandValue(value);
     // These should realistically never happen, but just in case someone finds a
     // way to exploit uuid generation let's not allow keys or values that contain
@@ -47306,7 +59605,7 @@ const userAgent = 'actions/tool-cache';
  */
 function downloadTool(url, dest, auth, headers) {
     return tool_cache_awaiter(this, void 0, void 0, function* () {
-        dest = dest || external_path_.join(_getTempDirectory(), external_crypto_namespaceObject.randomUUID());
+        dest = dest || external_path_.join(_getTempDirectory(), external_crypto_.randomUUID());
         yield io_mkdirP(external_path_.dirname(dest));
         core_debug(`Downloading ${url}`);
         core_debug(`Destination ${dest}`);
@@ -47789,7 +60088,7 @@ function _createExtractFolder(dest) {
     return tool_cache_awaiter(this, void 0, void 0, function* () {
         if (!dest) {
             // create a temp dir
-            dest = external_path_.join(_getTempDirectory(), external_crypto_namespaceObject.randomUUID());
+            dest = external_path_.join(_getTempDirectory(), external_crypto_.randomUUID());
         }
         yield io_mkdirP(dest);
         return dest;
@@ -51663,6 +63962,168 @@ const dist_src_Octokit = Octokit.plugin(requestLog, legacyRestEndpointMethods, p
     userAgent: `octokit-rest.js/${rest_dist_src_version_VERSION}`
   }
 );
+
+
+// EXTERNAL MODULE: ./node_modules/@sigstore/bundle/dist/index.js
+var dist = __nccwpck_require__(1040);
+// EXTERNAL MODULE: ./node_modules/@sigstore/tuf/dist/index.js
+var tuf_dist = __nccwpck_require__(4423);
+// EXTERNAL MODULE: ./node_modules/@sigstore/verify/dist/index.js
+var verify_dist = __nccwpck_require__(4187);
+;// CONCATENATED MODULE: ./src/attestation.js
+
+
+
+
+
+
+
+
+// TFLint attests checksums.txt from .github/workflows/release.yml, which runs on v*.*.* tag pushes.
+// https://github.com/terraform-linters/tflint/blob/master/.github/workflows/release.yml
+const OIDC_ISSUER = 'https://token.actions.githubusercontent.com';
+const IN_TOTO_PAYLOAD_TYPE = 'application/vnd.in-toto+json';
+const IN_TOTO_STATEMENT_V1 = 'https://in-toto.io/Statement/v1';
+const SLSA_PROVENANCE_V1 = 'https://slsa.dev/provenance/v1';
+
+/**
+ * @param {Buffer|string} data
+ * @returns {string} Hex-encoded SHA256 digest
+ */
+function sha256(data) {
+  return external_crypto_.createHash('sha256').update(data).digest('hex');
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Identity (certificate SAN) of TFLint's release workflow for a given tag.
+ * @param {string} version - Release tag (e.g. "v0.61.0")
+ * @returns {RegExp}
+ */
+function signerIdentity(version) {
+  // The version is escaped, so it can only match itself literally.
+  // eslint-disable-next-line security/detect-non-literal-regexp
+  return new RegExp(
+    `^https://github\\.com/terraform-linters/tflint/\\.github/workflows/release\\.yml@refs/tags/${escapeRegExp(version)}$`,
+  );
+}
+
+/**
+ * Find the SHA256 of an asset in a checksums.txt file ("<sha256>  <file name>" per line).
+ * @param {string} checksumsText
+ * @param {string} assetName
+ * @returns {string|undefined}
+ */
+function findChecksum(checksumsText, assetName) {
+  for (const line of checksumsText.split(/\r?\n/)) {
+    const match = line.trim().match(/^([0-9a-f]{64})\s+\*?(\S+)$/);
+    if (match && match[2] === assetName) {
+      return match[1];
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Check that an in-toto statement is SLSA provenance for the given SHA256 digest.
+ * @param {object} statement
+ * @param {string} digest
+ */
+function verifyStatement(statement, digest) {
+  if (statement?._type !== IN_TOTO_STATEMENT_V1) {
+    throw new Error(`unexpected statement type ${statement?._type}`);
+  }
+
+  if (statement.predicateType !== SLSA_PROVENANCE_V1) {
+    throw new Error(`unexpected predicate type ${statement.predicateType}`);
+  }
+
+  const subjects = Array.isArray(statement.subject) ? statement.subject : [];
+  if (!subjects.some((subject) => subject?.digest?.sha256 === digest)) {
+    throw new Error(`statement does not cover sha256:${digest}`);
+  }
+}
+
+async function loadTrustMaterial() {
+  // Sigstore public-good trust root, fetched and verified through TUF.
+  const cachePath = external_path_.join(process.env.RUNNER_TEMP || external_os_.tmpdir(), 'setup-tflint-sigstore');
+  const trustedRoot = await (0,tuf_dist.getTrustedRoot)({ cachePath });
+  return (0,verify_dist/* toTrustMaterial */.jO)(trustedRoot);
+}
+
+/**
+ * Verify that checksums.txt was attested by TFLint's release workflow for this version.
+ * Throws unless at least one attestation passes every check.
+ * @param {object} params
+ * @param {import('@octokit/rest').Octokit} params.octokit
+ * @param {string} params.version - Release tag (e.g. "v0.61.0")
+ * @param {Buffer} params.checksums - Contents of checksums.txt
+ * @param {() => Promise<object>} [params.getTrustMaterial] - Override for tests
+ */
+async function verifyChecksumsAttestation({
+  octokit,
+  version,
+  checksums,
+  getTrustMaterial = loadTrustMaterial,
+}) {
+  const digest = sha256(checksums);
+  const { data } = await octokit.request(
+    'GET /repos/{owner}/{repo}/attestations/{subject_digest}',
+    {
+      owner: 'terraform-linters',
+      repo: 'tflint',
+      subject_digest: `sha256:${digest}`,
+    },
+  );
+  const attestations = data?.attestations || [];
+  if (attestations.length === 0) {
+    throw new Error(
+      `No attestations found for checksums.txt (sha256:${digest}) of TFLint ${version}`,
+    );
+  }
+
+  const verifier = new verify_dist/* Verifier */.BL(await getTrustMaterial());
+  const policy = {
+    subjectAlternativeName: signerIdentity(version),
+    extensions: { issuer: OIDC_ISSUER },
+  };
+
+  const failures = [];
+  for (const attestation of attestations) {
+    try {
+      if (!attestation.bundle) {
+        throw new Error('attestation has no bundle');
+      }
+
+      const bundle = (0,dist/* bundleFromJSON */.vw)(attestation.bundle);
+      if (bundle.content.$case !== 'dsseEnvelope') {
+        throw new Error('attestation is not a DSSE envelope');
+      }
+
+      const envelope = bundle.content.dsseEnvelope;
+      if (envelope.payloadType !== IN_TOTO_PAYLOAD_TYPE) {
+        throw new Error(`unexpected payload type ${envelope.payloadType}`);
+      }
+
+      // Checks the signature, the certificate chain to Fulcio, the transparency log entry,
+      // and that the signer is TFLint's release workflow on this tag.
+      verifier.verify((0,verify_dist/* toSignedEntity */.DC)(bundle), policy);
+      verifyStatement(JSON.parse(envelope.payload.toString('utf8')), digest);
+      return;
+    } catch (error) {
+      failures.push(error.message);
+    }
+  }
+
+  throw new Error(
+    `No attestation for checksums.txt of TFLint ${version} was signed by terraform-linters/tflint's release workflow: ${failures.join('; ')}`,
+  );
+}
+
 
 
 ;// CONCATENATED MODULE: ./node_modules/@actions/cache/node_modules/@actions/io/lib/io-util.js
@@ -56216,7 +68677,7 @@ function hashFiles(globber_1, currentWorkspace_1) {
         const githubWorkspace = currentWorkspace
             ? currentWorkspace
             : ((_d = process.env['GITHUB_WORKSPACE']) !== null && _d !== void 0 ? _d : process.cwd());
-        const result = external_crypto_namespaceObject.createHash('sha256');
+        const result = external_crypto_.createHash('sha256');
         let count = 0;
         try {
             for (var _e = true, _f = internal_hash_files_asyncValues(globber.globGenerator()), _g; _g = yield _f.next(), _a = _g.done, !_a; _e = true) {
@@ -56232,7 +68693,7 @@ function hashFiles(globber_1, currentWorkspace_1) {
                     writeDelegate(`Skip directory '${file}'.`);
                     continue;
                 }
-                const hash = external_crypto_namespaceObject.createHash('sha256');
+                const hash = external_crypto_.createHash('sha256');
                 const pipeline = external_util_.promisify(external_stream_namespaceObject.pipeline);
                 yield pipeline(external_fs_.createReadStream(file), hash);
                 result.write(hash.digest());
@@ -56393,7 +68854,7 @@ function createTempDirectory() {
             }
             tempDirectory = external_path_.join(baseLocation, 'actions', 'temp');
         }
-        const dest = external_path_.join(tempDirectory, external_crypto_namespaceObject.randomUUID());
+        const dest = external_path_.join(tempDirectory, external_crypto_.randomUUID());
         yield lib_io_mkdirP(dest);
         return dest;
     });
@@ -56515,7 +68976,7 @@ function getCacheVersion(paths, compressionMethod, enableCrossOsArchive = false)
     }
     // Add salt to cache version to support breaking changes in cache entry
     components.push(versionSalt);
-    return external_crypto_namespaceObject.createHash('sha256').update(components.join('|')).digest('hex');
+    return external_crypto_.createHash('sha256').update(components.join('|')).digest('hex');
 }
 function getRuntimeToken() {
     const token = process.env['ACTIONS_RUNTIME_TOKEN'];
@@ -56525,8 +68986,8 @@ function getRuntimeToken() {
     return token;
 }
 //# sourceMappingURL=cacheUtils.js.map
-;// CONCATENATED MODULE: external "url"
-const external_url_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("url");
+// EXTERNAL MODULE: external "url"
+var external_url_ = __nccwpck_require__(7016);
 ;// CONCATENATED MODULE: ./node_modules/@typespec/ts-http-runtime/dist/esm/abort-controller/AbortError.js
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
@@ -59705,7 +72166,7 @@ class HttpsProxyAgent extends Agent {
     constructor(proxy, opts) {
         super(opts);
         this.options = { path: undefined };
-        this.proxy = typeof proxy === 'string' ? new external_url_namespaceObject.URL(proxy) : proxy;
+        this.proxy = typeof proxy === 'string' ? new external_url_.URL(proxy) : proxy;
         this.proxyHeaders = opts?.headers ?? {};
         dist_debug('Creating new HttpsProxyAgent instance: %o', this.proxy.href);
         if (opts?.negotiate) {
@@ -59919,7 +72380,7 @@ const http_proxy_agent_dist_debug = src('http-proxy-agent');
 class HttpProxyAgent extends Agent {
     constructor(proxy, opts) {
         super(opts);
-        this.proxy = typeof proxy === 'string' ? new external_url_namespaceObject.URL(proxy) : proxy;
+        this.proxy = typeof proxy === 'string' ? new external_url_.URL(proxy) : proxy;
         this.proxyHeaders = opts?.headers ?? {};
         http_proxy_agent_dist_debug('Creating new HttpProxyAgent instance: %o', this.proxy.href);
         if (opts?.negotiate) {
@@ -59954,7 +72415,7 @@ class HttpProxyAgent extends Agent {
         const protocol = opts.secureEndpoint ? 'https:' : 'http:';
         const hostname = req.getHeader('host') || 'localhost';
         const base = `${protocol}//${hostname}`;
-        const url = new external_url_namespaceObject.URL(req.path, base);
+        const url = new external_url_.URL(req.path, base);
         if (opts.port !== 80) {
             url.port = String(opts.port);
         }
@@ -108763,7 +121224,7 @@ function printCachesListForDiagnostics(key, httpClient, version) {
 }
 function downloadCache(archiveLocation, archivePath, options) {
     return cacheHttpClient_awaiter(this, void 0, void 0, function* () {
-        const archiveUrl = new external_url_namespaceObject.URL(archiveLocation);
+        const archiveUrl = new external_url_.URL(archiveLocation);
         const downloadOptions = getDownloadOptions(options);
         if (archiveUrl.hostname.endsWith('.blob.core.windows.net')) {
             if (downloadOptions.useAzureSdk) {
@@ -110684,6 +123145,7 @@ async function cache_restore_restoreCache() {
 
 
 
+
 /**
  * Normalize version for tool-cache compatibility
  * @param {string} version - Version string (e.g., "v0.50.0" or "0.50.0")
@@ -110739,7 +123201,7 @@ async function getTFLintVersion(inputVersion) {
 }
 
 async function fileSHA256(filePath) {
-  const hash = external_crypto_namespaceObject.createHash('sha256');
+  const hash = external_crypto_.createHash('sha256');
   const fileStream = external_fs_.createReadStream(filePath); // eslint-disable-line security/detect-non-literal-fs-filename
 
   await (0,promises_namespaceObject.pipeline)(fileStream, hash);
@@ -110822,11 +123284,56 @@ async function getDownloadRequest(version, assetName) {
   }
 }
 
-async function downloadCLI(request, checksums, version) {
+/**
+ * Verify a downloaded release asset against checksums.txt, after checking that
+ * checksums.txt was attested by TFLint's release workflow for this version.
+ * @param {string} version - Release tag (e.g. "v0.61.0")
+ * @param {string} assetName - Asset file name (e.g. "tflint_linux_amd64.zip")
+ * @param {string} assetPath - Path of the downloaded asset
+ */
+async function verifyRelease(version, assetName, assetPath) {
+  info('Verifying the artifact attestation of checksums.txt...');
+  const request = await getDownloadRequest(version, 'checksums.txt');
+  const checksumsPath = await downloadTool(
+    request.url,
+    undefined,
+    request.auth,
+    request.headers,
+  );
+  const checksumsTxt = await external_fs_.promises.readFile(checksumsPath); // eslint-disable-line security/detect-non-literal-fs-filename
+
+  await verifyChecksumsAttestation({ octokit: getOctokit(), version, checksums: checksumsTxt });
+
+  const expected = findChecksum(checksumsTxt.toString('utf8'), assetName);
+  if (!expected) {
+    throw new Error(`${assetName} is not listed in checksums.txt of TFLint ${version}`);
+  }
+
+  const actual = await fileSHA256(assetPath);
+  if (actual !== expected) {
+    throw new Error(
+      `Checksum mismatch for ${assetName}: checksums.txt lists ${expected}, but the download is ${actual}`,
+    );
+  }
+
+  info(
+    `Verified ${assetName} against checksums.txt attested by terraform-linters/tflint's release workflow`,
+  );
+}
+
+async function downloadCLI(request, checksums, version, { assetName, verifyAttestation } = {}) {
   const { url, auth, headers } = request;
   info(`Attempting to download ${version}...`);
   info(`Acquiring ${version} from ${url}${auth ? ' (authenticated)' : ''}`);
   const pathToCLIZip = await downloadTool(url, undefined, auth, headers);
+
+  if (verifyAttestation) {
+    await verifyRelease(version, assetName, pathToCLIZip);
+  } else {
+    warning(
+      'Skipping artifact attestation verification of the TFLint release (verify_attestation is false)',
+    );
+  }
 
   if (checksums.length > 0) {
     core_debug('Verifying checksum of downloaded file');
@@ -110903,6 +123410,8 @@ async function run() {
     const inputVersion = getInput('tflint_version');
     const checksums = getMultilineInput('checksums');
     const wrapper = getInput('tflint_wrapper') === 'true';
+    // Fail closed: only an explicit "false" turns verification off.
+    const verifyAttestation = getInput('verify_attestation') !== 'false';
     const version = await getTFLintVersion(inputVersion);
     const platform = mapOS(external_os_.platform());
     const arch = mapArch(external_os_.arch());
@@ -110914,9 +123423,10 @@ async function run() {
       info(`Found TFLint ${version} in cache @ ${pathToCLI}`);
     } else {
       core_debug(`Getting download URL for tflint version ${version}: ${platform} ${arch}`);
-      const request = await getDownloadRequest(version, `tflint_${platform}_${arch}.zip`);
+      const assetName = `tflint_${platform}_${arch}.zip`;
+      const request = await getDownloadRequest(version, assetName);
 
-      pathToCLI = await downloadCLI(request, checksums, version);
+      pathToCLI = await downloadCLI(request, checksums, version, { assetName, verifyAttestation });
 
       info('Adding to the tool cache...');
       pathToCLI = await cacheDir(pathToCLI, 'tflint', normalizedVersion, arch);

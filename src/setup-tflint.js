@@ -10,6 +10,7 @@ import io from '@actions/io';
 import * as tc from '@actions/tool-cache';
 import { Octokit } from '@octokit/rest';
 
+import { findChecksum, verifyChecksumsAttestation } from './attestation.js';
 import restoreCache from './cache-restore.js';
 
 /**
@@ -150,11 +151,56 @@ async function getDownloadRequest(version, assetName) {
   }
 }
 
-async function downloadCLI(request, checksums, version) {
+/**
+ * Verify a downloaded release asset against checksums.txt, after checking that
+ * checksums.txt was attested by TFLint's release workflow for this version.
+ * @param {string} version - Release tag (e.g. "v0.61.0")
+ * @param {string} assetName - Asset file name (e.g. "tflint_linux_amd64.zip")
+ * @param {string} assetPath - Path of the downloaded asset
+ */
+async function verifyRelease(version, assetName, assetPath) {
+  core.info('Verifying the artifact attestation of checksums.txt...');
+  const request = await getDownloadRequest(version, 'checksums.txt');
+  const checksumsPath = await tc.downloadTool(
+    request.url,
+    undefined,
+    request.auth,
+    request.headers,
+  );
+  const checksumsTxt = await fs.promises.readFile(checksumsPath); // eslint-disable-line security/detect-non-literal-fs-filename
+
+  await verifyChecksumsAttestation({ octokit: getOctokit(), version, checksums: checksumsTxt });
+
+  const expected = findChecksum(checksumsTxt.toString('utf8'), assetName);
+  if (!expected) {
+    throw new Error(`${assetName} is not listed in checksums.txt of TFLint ${version}`);
+  }
+
+  const actual = await fileSHA256(assetPath);
+  if (actual !== expected) {
+    throw new Error(
+      `Checksum mismatch for ${assetName}: checksums.txt lists ${expected}, but the download is ${actual}`,
+    );
+  }
+
+  core.info(
+    `Verified ${assetName} against checksums.txt attested by terraform-linters/tflint's release workflow`,
+  );
+}
+
+async function downloadCLI(request, checksums, version, { assetName, verifyAttestation } = {}) {
   const { url, auth, headers } = request;
   core.info(`Attempting to download ${version}...`);
   core.info(`Acquiring ${version} from ${url}${auth ? ' (authenticated)' : ''}`);
   const pathToCLIZip = await tc.downloadTool(url, undefined, auth, headers);
+
+  if (verifyAttestation) {
+    await verifyRelease(version, assetName, pathToCLIZip);
+  } else {
+    core.warning(
+      'Skipping artifact attestation verification of the TFLint release (verify_attestation is false)',
+    );
+  }
 
   if (checksums.length > 0) {
     core.debug('Verifying checksum of downloaded file');
@@ -231,6 +277,8 @@ async function run() {
     const inputVersion = core.getInput('tflint_version');
     const checksums = core.getMultilineInput('checksums');
     const wrapper = core.getInput('tflint_wrapper') === 'true';
+    // Fail closed: only an explicit "false" turns verification off.
+    const verifyAttestation = core.getInput('verify_attestation') !== 'false';
     const version = await getTFLintVersion(inputVersion);
     const platform = mapOS(os.platform());
     const arch = mapArch(os.arch());
@@ -242,9 +290,10 @@ async function run() {
       core.info(`Found TFLint ${version} in cache @ ${pathToCLI}`);
     } else {
       core.debug(`Getting download URL for tflint version ${version}: ${platform} ${arch}`);
-      const request = await getDownloadRequest(version, `tflint_${platform}_${arch}.zip`);
+      const assetName = `tflint_${platform}_${arch}.zip`;
+      const request = await getDownloadRequest(version, assetName);
 
-      pathToCLI = await downloadCLI(request, checksums, version);
+      pathToCLI = await downloadCLI(request, checksums, version, { assetName, verifyAttestation });
 
       core.info('Adding to the tool cache...');
       pathToCLI = await tc.cacheDir(pathToCLI, 'tflint', normalizedVersion, arch);

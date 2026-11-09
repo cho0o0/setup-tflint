@@ -13,6 +13,10 @@ inputs:
     description: Installs a wrapper script to wrap subsequent calls to `tflint` and expose `stdout`, `stderr`, and `exitcode` outputs
     default: 'false'
     required: false
+  verify_attestation:
+    description: Verify that the downloaded TFLint binary is listed in a checksums.txt attested by terraform-linters/tflint's release workflow (GitHub artifact attestation). Releases before v0.51.1 have no attestation; set this to 'false' to install them.
+    default: 'true'
+    required: false
   checksums:
     description: Newline-delimited list of valid checksums (SHA256 hashes) for the downloaded TFLint binary. When set, the action will verify that the binary matches one of these checksums before proceeding.
     required: false

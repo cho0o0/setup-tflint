@@ -3,7 +3,8 @@
 A GitHub action that installs a Terraform linter [TFLint](https://github.com/terraform-linters/tflint) executable in the PATH.
 
 > [!NOTE]
-> This is a fork of [terraform-linters/setup-tflint](https://github.com/terraform-linters/setup-tflint) v6.2.1. When `github_token` is set, the TFLint binary is downloaded through the GitHub REST API with that token, so the download is authenticated. Upstream always downloads the binary anonymously, which can fail when GitHub throttles unauthenticated traffic.
+> This is a fork of [terraform-linters/setup-tflint](https://github.com/terraform-linters/setup-tflint).
+> Diff against the latest upstream: https://github.com/cho0o0/setup-tflint/compare/upstream..master
 
 ## Inputs
 
@@ -16,6 +17,14 @@ The version of TFLint which will be installed. See [TFLint releases page](https:
 If version is `"latest"`, the action will get the latest version number using [Octokit](https://octokit.github.io/rest.js/).
 
 Default: `"latest"`
+
+### `verify_attestation`
+
+Verifies the downloaded TFLint binary before installing it. The action downloads the release's `checksums.txt`, checks its [GitHub artifact attestation](https://github.com/terraform-linters/tflint?tab=readme-ov-file#github-cli-recommended), and requires the binary to match the SHA256 listed in it. The attestation must be signed through Sigstore by `.github/workflows/release.yml` in `terraform-linters/tflint`, running on the tag of the requested version. If any check fails, the action fails and TFLint is not installed.
+
+TFLint releases before v0.51.1 have no attestation. To install them, set this to `"false"`.
+
+Default: `"true"`
 
 ### `checksums`
 
