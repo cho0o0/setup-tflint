@@ -170,6 +170,18 @@ describe('verifyChecksumsAttestation', () => {
     await expect(run()).rejects.toThrow('No attestations found');
   });
 
+  it('explains how to proceed when the API has no attestation for the digest', async () => {
+    request.mockRejectedValue(Object.assign(new Error('Not Found'), { status: 404 }));
+
+    await expect(run()).rejects.toThrow(/No attestations found.*verify_attestation/);
+  });
+
+  it('does not hide other API errors', async () => {
+    request.mockRejectedValue(Object.assign(new Error('Server Error'), { status: 500 }));
+
+    await expect(run()).rejects.toThrow('Server Error');
+  });
+
   it('fails when the signature or signer does not verify', async () => {
     verify.mockImplementation(() => {
       throw new Error('certificate identity error');

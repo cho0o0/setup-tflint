@@ -64071,18 +64071,30 @@ async function verifyChecksumsAttestation({
   getTrustMaterial = loadTrustMaterial,
 }) {
   const digest = sha256(checksums);
-  const { data } = await octokit.request(
-    'GET /repos/{owner}/{repo}/attestations/{subject_digest}',
-    {
-      owner: 'terraform-linters',
-      repo: 'tflint',
-      subject_digest: `sha256:${digest}`,
-    },
-  );
-  const attestations = data?.attestations || [];
+  let attestations;
+
+  try {
+    const { data } = await octokit.request(
+      'GET /repos/{owner}/{repo}/attestations/{subject_digest}',
+      {
+        owner: 'terraform-linters',
+        repo: 'tflint',
+        subject_digest: `sha256:${digest}`,
+      },
+    );
+    attestations = data?.attestations || [];
+  } catch (error) {
+    // The API answers 404 when nothing is attested for the digest.
+    if (error.status !== 404) {
+      throw error;
+    }
+
+    attestations = [];
+  }
   if (attestations.length === 0) {
     throw new Error(
-      `No attestations found for checksums.txt (sha256:${digest}) of TFLint ${version}`,
+      `No attestations found for checksums.txt (sha256:${digest}) of TFLint ${version}. ` +
+        "Releases before v0.51.1 have no attestation; set verify_attestation to 'false' to install them.",
     );
   }
 
